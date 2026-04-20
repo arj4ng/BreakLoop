@@ -4,7 +4,7 @@ struct DashboardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Dashboard")
-                .font(.title.bold())
+                .appTypography(AppTypography.title1)
                 .foregroundStyle(AppColors.textPrimary)
 
         }
