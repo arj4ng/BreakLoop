@@ -8,10 +8,10 @@
 | `02 AUTH` | Sign-in, session state, sign-out |
 | `03 ONBOARDING` | First-time user setup flow |
 | `04 DASHBOARD` | Dashboard UI + insight view logic |
-| `05 SMOKE ENTRY` | Smoke entry flow |
+| `05 CONSUMPTION ENTRY` | Consumption entry flow |
 | `06 PURCHASE ENTRY` | Purchase entry flow |
 | `07 EXPENSES` | Cost/expense aggregation |
-| `08 GOALS` | Quit/reduction goals |
+| `08 GOALS` | Consumption/reduction goals |
 | `09 REWARDS` | Milestones, reward unlock logic |
 | `10 SETTINGS` | Preferences, user config |
 | `11 MODELS` | Domain models/value types |
@@ -31,7 +31,7 @@
 Beispiel:
 
 ```swift
-// MARK: ┏━ [05 SMOKE ENTRY] SmokeEntryViewModel
+// MARK: ┏━ [05 CONSUMPTION ENTRY] ConsumptionEntryViewModel
 // MARK: ┗━ Eingabe, validierung, submit status
 ```
 

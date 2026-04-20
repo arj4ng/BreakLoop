@@ -28,7 +28,7 @@ struct PurchaseEntry: Identifiable, Codable, Hashable, Sendable {
     var packsBought: Int
 
     // pack größe im moment vom kauf für korrekte history
-    var cigarettesPerPack: Int
+    var unitsPerPack: Int
 
     // total price bleibt raw kaufwert ohne auto umrechnung
     var totalPrice: Decimal
@@ -41,7 +41,7 @@ struct PurchaseEntry: Identifiable, Codable, Hashable, Sendable {
     init(
         id: UUID = UUID(),
         packsBought: Int,
-        cigarettesPerPack: Int,
+        unitsPerPack: Int,
         totalPrice: Decimal,
         timestamp: Date = .now,
         createdAt: Date = .now
@@ -50,7 +50,7 @@ struct PurchaseEntry: Identifiable, Codable, Hashable, Sendable {
         // init mapped eingaben direkt auf das model
         self.id = id
         self.packsBought = packsBought
-        self.cigarettesPerPack = cigarettesPerPack
+        self.unitsPerPack = unitsPerPack
         self.totalPrice = totalPrice
         self.timestamp = timestamp
         self.createdAt = createdAt

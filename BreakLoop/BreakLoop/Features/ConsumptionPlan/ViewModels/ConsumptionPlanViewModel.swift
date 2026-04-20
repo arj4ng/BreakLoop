@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Shared/ Models/ SmokeEntry.swift
+// BreakLoop/ BreakLoop/ Features/ ConsumptionPlan/ ViewModels/ ConsumptionPlanViewModel.swift
 
-// smoke entry
+// ConsumptionPlan view model
 //
 // Created by Arjang Khademi on 20.04.2026
 /*
@@ -17,32 +17,9 @@
 import Foundation
 
 
-// MARK: ┏━ [11 MODELS] SmokeEntry
-// MARK: ┗━ Einzelner Raucheintrag zur Nachverfolgung vom Konsum
+// MARK: ┏━ [08 GOALS] ConsumptionPlanViewModel
+// MARK: ┗━ konsum plan view model für screen state
 
-// entry bewusst minimal und append only halten
-struct SmokeEntry: Identifiable, Codable, Hashable, Sendable {
-    let id: UUID
-
-    // kernwert für konsum tracking pro eintrag
-    var cigarettesCount: Int
-
-    // zeitpunkt vom event für timeline und filter
-    var timestamp: Date
-    let createdAt: Date
-
-    // init bündelt smoke eintrag erstellung sauber
-    init(
-        id: UUID = UUID(),
-        cigarettesCount: Int,
-        timestamp: Date = .now,
-        createdAt: Date = .now
-    ) {
-
-        // init mapped eingaben direkt auf das model
-        self.id = id
-        self.cigarettesCount = cigarettesCount
-        self.timestamp = timestamp
-        self.createdAt = createdAt
-    }
+final class ConsumptionPlanViewModel {
+    init() {}
 }

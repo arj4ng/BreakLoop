@@ -14,7 +14,7 @@
 - zeigt heutige kosten, monatskosten, einsparung
 - updated nach jedem neuen eintrag
 - bottom dock actions:
-  - smoke entry (slide to submit)
+  - consumption entry (slide to submit)
   - purchase entry (slide to submit)
 
 ## expenses
@@ -22,8 +22,8 @@
 - app berechnet kosten sofort
 - werte landen im verlauf
 
-## quit plan
-- nutzer setzt zielwert oder quit datum
+## konsum plan
+- nutzer setzt zielwert oder target datum
 - app zeigt soll vs ist fortschritt
 
 ## rewards

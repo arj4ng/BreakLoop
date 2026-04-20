@@ -1,9 +1,9 @@
 # 02 stories + jtbd
 
 ## user stories
-- als raucher will ich tageskonsum erfassen, damit kosten sichtbar werden
-- als raucher will ich wochen und monatskosten sehen, damit realität klar wird
-- als raucher will ich sparbetrag sehen, damit verzicht belohnt wirkt
+- als nutzer will ich tageskonsum erfassen, damit kosten sichtbar werden
+- als nutzer will ich wochen und monatskosten sehen, damit realität klar wird
+- als nutzer will ich sparbetrag sehen, damit verzicht belohnt wirkt
 - als nutzer will ich reduktionsziel setzen, damit ich strukturiert runtergehe
 - als nutzer will ich fortschritt gegen ziel sehen, damit motivation bleibt
 - als nutzer will ich meilensteine sehen, damit kleine siege sichtbar sind

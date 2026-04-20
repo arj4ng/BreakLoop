@@ -18,13 +18,13 @@ import Foundation
 
 
 // MARK: ┏━ [08 GOALS] Goal
-// MARK: ┗━ Nutzerziel für tägliche Reduktion oder Rauchstopp Datum
+// MARK: ┗━ Nutzerziel für tägliche Reduktion oder Target Datum
 
 // ziel model generisch halten, damit rewards/progress später reusable bleiben
 struct Goal: Identifiable, Codable, Hashable, Sendable {
 
     // MARK: ┏━ [08 GOALS] Kind
-    // MARK: ┗━ Zielstrategie varianten für den quit plan flow
+    // MARK: ┗━ Zielstrategie varianten für den konsum plan flow
 
     enum Kind: String, Codable, Hashable, Sendable {
 
@@ -32,16 +32,16 @@ struct Goal: Identifiable, Codable, Hashable, Sendable {
         case reduceDaily
 
         // zielt auf kompletten stopp bis datum
-        case quitByDate
+        case targetByDate
     }
 
     let id: UUID
     var kind: Kind
 
     // nur relevant wenn kind reduceDaily ist
-    var targetDailyCigarettes: Int?
+    var targetDailyUnits: Int?
 
-    // nur relevant wenn kind quitByDate ist
+    // nur relevant wenn kind targetByDate ist
     var targetDate: Date?
 
     // startpunkt für progress berechnung
@@ -53,7 +53,7 @@ struct Goal: Identifiable, Codable, Hashable, Sendable {
     init(
         id: UUID = UUID(),
         kind: Kind,
-        targetDailyCigarettes: Int? = nil,
+        targetDailyUnits: Int? = nil,
         targetDate: Date? = nil,
         startDate: Date = .now,
         createdAt: Date = .now,
@@ -63,8 +63,8 @@ struct Goal: Identifiable, Codable, Hashable, Sendable {
         // init mapped eingaben direkt auf das model
         self.id = id
         self.kind = kind
-        self.targetDailyCigarettes = targetDailyCigarettes // nur für reduceDaily relevant
-        self.targetDate = targetDate // nur für quitByDate relevant
+        self.targetDailyUnits = targetDailyUnits // nur für reduceDaily relevant
+        self.targetDate = targetDate // nur für targetByDate relevant
         self.startDate = startDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt

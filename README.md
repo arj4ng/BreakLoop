@@ -1,11 +1,11 @@
 <div align="center">
   <h1>🚭 BreakLoop</h1>
-  <p><strong>Rauchkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
+  <p><strong>Konsumkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
 
   <p>
     <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
     <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
-    <img alt="Status" src="https://img.shields.io/badge/in-Bearbeitung%20MVP-FF9F0A?style=for-the-badge" />
+    <img alt="Status" src="https://img.shields.io/badge/In%20Arbeit%20MVP-FF9F0A?style=for-the-badge" />
   </p>
 </div>
 
@@ -15,11 +15,11 @@
 
 BreakLoop ist mein iOS Bootcamp Abschlussprojekt.
 
-Die Idee: Raucher:innen sehen klar, was ihr Konsum wirklich kostet, setzen sich Ziele und bleiben mit kleinen Rewards eher dran.
+Die Idee: Nutzer:innen sehen klar, was ihr Konsum wirklich kostet, setzen sich Ziele und bleiben mit kleinen Rewards eher dran.
 
 ## Warum ich die App baue
 
-Im Alltag wirken Zigarettenkosten oft „nicht so schlimm".
+Im Alltag wirken Konsumkosten oft „nicht so schlimm".
 Wenn man die Zahlen aber auf Woche, Monat und Jahr sieht, ändert sich der Blick schnell.
 Genau da setzt BreakLoop an.
 
@@ -27,8 +27,8 @@ Genau da setzt BreakLoop an.
 
 <ul>
   <li><code>Dashboard</code> → Kostenüberblick + erste Insights</li>
-  <li><code>Expenses</code> → Smoke und Purchase Entries</li>
-  <li><code>QuitPlan</code> → Reduktions oder Quit Ziel</li>
+  <li><code>Expenses</code> → Konsum und Purchase Einträge</li>
+  <li><code>ConsumptionPlan</code> → Reduktionsziel oder Target Datum</li>
   <li><code>Rewards</code> → Meilensteine sichtbar machen</li>
   <li><code>Settings</code> → Preis und Basiswerte anpassen</li>
 </ul>
@@ -48,7 +48,7 @@ BreakLoop/
 │   ├── Features/
 │   │   ├── Dashboard/
 │   │   ├── Expenses/
-│   │   ├── QuitPlan/
+│   │   ├── ConsumptionPlan/
 │   │   ├── Rewards/
 │   │   └── Settings/
 │   └── Resources/
@@ -101,10 +101,10 @@ BreakLoop/
   <tr>
     <td><strong>2 · Expense Tracking</strong></td>
     <td>🟡 Nächster Schritt</td>
-    <td>Smoke und Purchase Eingabe + Kostenlogik</td>
+    <td>Konsum und Purchase Eingabe + Kostenlogik</td>
   </tr>
   <tr>
-    <td><strong>3 · Quit Plan</strong></td>
+    <td><strong>3 · Konsum Plan</strong></td>
     <td>⏳ Geplant</td>
     <td>Ziele setzen und Fortschritt tracken</td>
   </tr>

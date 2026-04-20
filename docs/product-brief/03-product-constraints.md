@@ -1,7 +1,7 @@
 # 03 rahmen + grenzen
 
 ## annahmen
-- nutzer kennt ungefähr eigenen zigarettenpreis
+- nutzer kennt ungefähr eigenen consumptionpreis
 - manuelle eingabe reicht für mvp
 - nutzung bleibt kurz, meist unter 1 minute
 - einfache rewards reichen für v1

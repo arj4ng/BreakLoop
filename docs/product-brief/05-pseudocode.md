@@ -43,7 +43,7 @@ onExpenseSubmit(input):
   notify dashboard + rewards
 ```
 
-## quit plan
+## konsum plan
 ```text
 onGoalSave(goal):
   store goal

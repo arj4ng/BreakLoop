@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Features/ QuitPlan/ ViewModels/ QuitPlanViewModel.swift
+// BreakLoop/ BreakLoop/ Features/ ConsumptionPlan/ Models/ ConsumptionPlanModel.swift
 
-// QuitPlan view model
+// ConsumptionPlan model
 //
 // Created by Arjang Khademi on 20.04.2026
 /*
@@ -17,9 +17,7 @@
 import Foundation
 
 
-// MARK: ┏━ [08 GOALS] QuitPlanViewModel
-// MARK: ┗━ quitplan view model für screen state
+// MARK: ┏━ [11 MODELS] ConsumptionPlanModel
+// MARK: ┗━ konsum plan model für daten
 
-final class QuitPlanViewModel {
-    init() {}
-}
+struct ConsumptionPlanModel {}

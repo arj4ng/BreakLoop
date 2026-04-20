@@ -26,13 +26,13 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
     var displayName: String
 
     // baseline wert für spätere vergleichsrechnung im dashboard
-    var cigarettesPerDayBaseline: Int
+    var baselineUnitsPerDay: Int
 
     // fallback pack größe falls keine purchase daten da sind
-    var cigarettesPerPack: Int
+    var baselineUnitsPerPack: Int
 
     // basis preis pro pack für cost berechnung
-    var pricePerPack: Decimal
+    var baselinePackPrice: Decimal
     let createdAt: Date
     var updatedAt: Date
 
@@ -40,9 +40,9 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
     init(
         id: UUID = UUID(),
         displayName: String,
-        cigarettesPerDayBaseline: Int,
-        cigarettesPerPack: Int,
-        pricePerPack: Decimal,
+        baselineUnitsPerDay: Int,
+        baselineUnitsPerPack: Int,
+        baselinePackPrice: Decimal,
         createdAt: Date = .now,
         updatedAt: Date = .now
     ) {
@@ -50,9 +50,9 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
         // init mapped eingaben direkt auf das model
         self.id = id
         self.displayName = displayName
-        self.cigarettesPerDayBaseline = cigarettesPerDayBaseline
-        self.cigarettesPerPack = cigarettesPerPack
-        self.pricePerPack = pricePerPack
+        self.baselineUnitsPerDay = baselineUnitsPerDay
+        self.baselineUnitsPerPack = baselineUnitsPerPack
+        self.baselinePackPrice = baselinePackPrice
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

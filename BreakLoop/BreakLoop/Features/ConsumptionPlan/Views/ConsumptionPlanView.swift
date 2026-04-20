@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Features/ QuitPlan/ Views/ QuitPlanView.swift
+// BreakLoop/ BreakLoop/ Features/ ConsumptionPlan/ Views/ ConsumptionPlanView.swift
 
-// QuitPlan view
+// ConsumptionPlan view
 //
 // Created by Arjang Khademi on 20.04.2026
 /*
@@ -17,15 +17,15 @@
 import SwiftUI
 
 
-// MARK: ┏━ [08 GOALS] QuitPlanView
-// MARK: ┗━ quitplan screen für feature
+// MARK: ┏━ [08 GOALS] ConsumptionPlanView
+// MARK: ┗━ konsum plan screen für feature
 
-struct QuitPlanView: View {
+struct ConsumptionPlanView: View {
     var body: some View {
-        Text("Quit Plan")
+        Text("Konsum Plan")
     }
 }
 
 #Preview {
-    QuitPlanView()
+    ConsumptionPlanView()
 }

@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Features/ QuitPlan/ Services/ QuitPlanService.swift
+// BreakLoop/ BreakLoop/ Features/ ConsumptionPlan/ Services/ ConsumptionPlanService.swift
 
-// QuitPlan service
+// ConsumptionPlan service
 //
 // Created by Arjang Khademi on 20.04.2026
 /*
@@ -17,7 +17,7 @@
 import Foundation
 
 
-// MARK: ┏━ [12 SERVICES] QuitPlanServiceProtocol
-// MARK: ┗━ quitplan service contract für use cases
+// MARK: ┏━ [12 SERVICES] ConsumptionPlanServiceProtocol
+// MARK: ┗━ konsum plan service contract für use cases
 
-protocol QuitPlanServiceProtocol {}
+protocol ConsumptionPlanServiceProtocol {}
