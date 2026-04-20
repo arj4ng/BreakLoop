@@ -11,8 +11,18 @@
   </pre>
 
   <h1>BreakLoop</h1>
-  <img src="./BreakLoop/BreakLoop/Assets.xcassets/AppIcon.appiconset/Icon-iOS-Default-1024x1024@1x.png" alt="BreakLoop App Icon" width="128" />
-  <p><strong>Konsumkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
+  <table align="center">
+    <tr>
+      <td>
+        <img src="./BreakLoop/BreakLoop/Assets.xcassets/AppIcon.appiconset/Icon-iOS-Default-1024x1024@1x.png" alt="BreakLoop App Icon" width="128" />
+      </td>
+      <td align="left">
+        <strong>Konsumkosten sichtbar machen</strong><br/>
+        <strong>Gewohnheit brechen</strong><br/>
+        <strong>Fortschritt belohnen</strong>
+      </td>
+    </tr>
+  </table>
 
   <p>
     <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
