@@ -129,12 +129,3 @@ BreakLoop/
     <td>Bessere Auswertung, UX Feinschliff</td>
   </tr>
 </table>
-
-## Lokal starten
-
-<ol>
-  <li><code>BreakLoop/BreakLoop.xcodeproj</code> öffnen</li>
-  <li>Scheme <code>BreakLoop</code> wählen</li>
-  <li>Simulator oder Device wählen</li>
-  <li><code>Cmd + R</code></li>
-</ol>
