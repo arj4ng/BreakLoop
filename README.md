@@ -1,8 +1,21 @@
-# BreakLoop
+<div align="center">
+  <h1>🚭 BreakLoop</h1>
+  <p><strong>Rauchkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
 
-BreakLoop ist mein iOS-Bootcamp-Abschlussprojekt.
+  <p>
+    <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
+    <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
+    <img alt="Status" src="https://img.shields.io/badge/Status-Bootcamp%20MVP-FF9F0A?style=for-the-badge" />
+  </p>
+</div>
 
-Die Idee: Raucher:innen sehen endlich klar, was ihr Konsum wirklich kostet, setzen sich Ziele und bleiben mit kleinen Rewards eher dran.
+<br/>
+
+## Kurzpitch
+
+BreakLoop ist mein iOS Bootcamp Abschlussprojekt.
+
+Die Idee: Raucher:innen sehen klar, was ihr Konsum wirklich kostet, setzen sich Ziele und bleiben mit kleinen Rewards eher dran.
 
 ## Warum ich die App baue
 
@@ -12,24 +25,19 @@ Genau da setzt BreakLoop an.
 
 ## Was im MVP drin ist
 
-- `Dashboard`: Kostenüberblick + erste Insights
-- `Expenses`: Smoke- und Purchase-Entries
-- `QuitPlan`: Reduktions- oder Quit-Ziel
-- `Rewards`: Meilensteine sichtbar machen
-- `Settings`: Preis- und Basiswerte anpassen
+<ul>
+  <li><code>Dashboard</code> → Kostenüberblick + erste Insights</li>
+  <li><code>Expenses</code> → Smoke und Purchase Entries</li>
+  <li><code>QuitPlan</code> → Reduktions oder Quit Ziel</li>
+  <li><code>Rewards</code> → Meilensteine sichtbar machen</li>
+  <li><code>Settings</code> → Preis und Basiswerte anpassen</li>
+</ul>
 
-## Aktueller Stand
-
-- Projektstruktur steht
-- Design-System-Basis (Farben + Typografie) steht
-- Domain-Modelle sind angelegt
-- Nächster Fokus: Expense-Flow + Kostenberechnung
-
-## Tech / Struktur
+## Tech und Struktur
 
 - iOS + SwiftUI
 - MVVM + Service Layer
-- Feature-first Struktur
+- Feature first Struktur
 
 ```text
 BreakLoop/
@@ -47,20 +55,80 @@ BreakLoop/
 └── BreakLoopTests/
 ```
 
+## Projektstatus
+
+<table>
+  <tr>
+    <th align="left">Bereich</th>
+    <th align="left">Status</th>
+    <th align="left">Notiz</th>
+  </tr>
+  <tr>
+    <td>Projektstruktur</td>
+    <td>✅ Fertig</td>
+    <td>Feature first Struktur steht</td>
+  </tr>
+  <tr>
+    <td>Design System</td>
+    <td>✅ Basis fertig</td>
+    <td>Farben + Typografie angelegt</td>
+  </tr>
+  <tr>
+    <td>Domain Modelle</td>
+    <td>✅ Angelegt</td>
+    <td>Profile, Entries, Goals vorhanden</td>
+  </tr>
+  <tr>
+    <td>Expense Flow</td>
+    <td>🟡 In Arbeit</td>
+    <td>Nächster Fokus für echte Daten</td>
+  </tr>
+</table>
+
+## Roadmap
+
+<table>
+  <tr>
+    <th align="left">Phase</th>
+    <th align="left">Status</th>
+    <th align="left">Ziel</th>
+  </tr>
+  <tr>
+    <td><strong>1 · Scaffold</strong></td>
+    <td>✅ Fertig</td>
+    <td>Grundstruktur, Module, Basis Design System</td>
+  </tr>
+  <tr>
+    <td><strong>2 · Expense Tracking</strong></td>
+    <td>🟡 Nächster Schritt</td>
+    <td>Smoke und Purchase Eingabe + Kostenlogik</td>
+  </tr>
+  <tr>
+    <td><strong>3 · Quit Plan</strong></td>
+    <td>⏳ Geplant</td>
+    <td>Ziele setzen und Fortschritt tracken</td>
+  </tr>
+  <tr>
+    <td><strong>4 · Rewards</strong></td>
+    <td>⏳ Geplant</td>
+    <td>Meilensteine und sichtbare Belohnung</td>
+  </tr>
+  <tr>
+    <td><strong>5 · Insights und Polish</strong></td>
+    <td>⏳ Geplant</td>
+    <td>Bessere Auswertung, UX Feinschliff</td>
+  </tr>
+</table>
+
 ## Lokal starten
 
-1. `BreakLoop/BreakLoop.xcodeproj` öffnen
-2. Scheme `BreakLoop` wählen
-3. Simulator oder Device wählen
-4. `Cmd + R`
-
-## Geplante nächsten Schritte
-
-1. Expense-Eingabe fertig machen (smoke + purchase)
-2. Kostenlogik (Tag/Woche/Monat/Jahr) anschließen
-3. Dashboard mit echten Werten füllen
-4. QuitPlan + Rewards Flow anbinden
+<ol>
+  <li><code>BreakLoop/BreakLoop.xcodeproj</code> öffnen</li>
+  <li>Scheme <code>BreakLoop</code> wählen</li>
+  <li>Simulator oder Device wählen</li>
+  <li><code>Cmd + R</code></li>
+</ol>
 
 ## Hinweis
 
-Aktueller Stand ist bewusst MVP/Bootcamp-fokussiert.
+Aktueller Stand bleibt bewusst MVP und Bootcamp fokussiert.
