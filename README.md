@@ -11,12 +11,12 @@
   </pre>
 
   <h1>BreakLoop</h1>
-  <table align="center">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" style="border:none;border-collapse:collapse;">
     <tr>
-      <td>
+      <td style="border:none;padding:0 14px 0 0;">
         <img src="./BreakLoop/BreakLoop/Assets.xcassets/AppIcon.appiconset/Icon-iOS-Default-1024x1024@1x.png" alt="BreakLoop App Icon" width="128" />
       </td>
-      <td align="left">
+      <td align="left" style="border:none;padding:0;">
         <strong>Konsumkosten sichtbar machen</strong><br/>
         <strong>Gewohnheit brechen</strong><br/>
         <strong>Fortschritt belohnen</strong>
