@@ -5,11 +5,9 @@
   <p>
     <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
     <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
-    <img alt="Status" src="https://img.shields.io/badge/In%20Arbeit%20MVP-FF9F0A?style=for-the-badge" />
+    <img alt="Status" src="https://img.shields.io/badge/Status-In%20Arbeit%20(MVP)-FF9F0A?style=for-the-badge" />
   </p>
 </div>
-
-<br/>
 
 ## Kurzpitch
 
