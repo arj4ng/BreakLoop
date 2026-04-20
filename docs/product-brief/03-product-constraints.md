@@ -2,12 +2,12 @@
 
 ## annahmen
 - nutzer kennt ungefähr eigenen consumptionpreis
-- manuelle eingabe reicht für mvp
+- manuelle eingabe reicht für den aktuellen stand
 - nutzung bleibt kurz, meist unter 1 minute
 - einfache rewards reichen für v1
 - offline first reicht am anfang
 
-## mvp erfolgswerte
+## erfolgswerte
 - >= 60% machen mind. 1 eintrag pro woche
 - >= 50% setzen in 3 tagen ein ziel
 - >= 40% schaffen ersten meilenstein in 14 tagen
