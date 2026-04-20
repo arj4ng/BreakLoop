@@ -1,32 +1,68 @@
-# BreakLoop
+<div align="center">
+  <h1>🚭 BreakLoop</h1>
+  <p><strong>Rauchkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
 
-BreakLoop zeigt Rauchkosten klar.
-App hilft Gewohnheit ändern.
-Fortschritt bringt Belohnung.
+  <p>
+    <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
+    <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
+    <img alt="Status" src="https://img.shields.io/badge/Status-Bootcamp%20MVP-FF9F0A?style=for-the-badge" />
+  </p>
+</div>
 
-## Problem und Nutzen
+<br/>
 
-- Rauchen kostet viel Geld, oft unsichtbar im Alltag.
-- Nutzer sehen echte Ausgaben pro Tag, Woche, Monat, Jahr.
-- Sichtbarkeit + Ziele = mehr Motivation für Veränderung.
+## <img src="https://img.icons8.com/ios-filled/20/000000/info.png" width="16" alt=""/> Kurzpitch
 
-## MVP Features (geplant)
+BreakLoop zeigt echte Rauchkosten pro Tag, Woche, Monat, Jahr.  
+App unterstützt Verhaltensänderung über Ziele, Fortschritt, Rewards.
 
-- `Dashboard`: Überblick über Kosten, Verlauf, Einsparung.
-- `Expenses`: Zigaretten- und Ausgaben-Tracking.
-- `QuitPlan`: Ziele, Reduktionsplan, Meilensteine.
-- `Rewards`: Belohnungen bei erreichten Zielen.
-- `Settings`: Preise, Gewohnheiten, Präferenzen.
+## <img src="https://img.icons8.com/ios-filled/20/000000/idea.png" width="16" alt=""/> Problem → Nutzen
 
-## Architektur (kompakt)
+<table>
+  <tr>
+    <th align="left">Problem</th>
+    <th align="left">Nutzen</th>
+  </tr>
+  <tr>
+    <td>Rauchkosten im Alltag unsichtbar</td>
+    <td>Kosten werden sofort messbar</td>
+  </tr>
+  <tr>
+    <td>Motivation fällt ohne Feedback</td>
+    <td>Ziele + Fortschritt erhöhen Motivation</td>
+  </tr>
+  <tr>
+    <td>Keine Belohnung bei Reduktion</td>
+    <td>Rewards markieren echte Erfolge</td>
+  </tr>
+</table>
 
-- Pattern: `MVVM` + `Service Layer`.
-- UI in `Views`.
-- Logik in `ViewModels`.
-- Datenstrukturen in `Models`.
-- Infrastruktur in `Services`.
+## <img src="https://img.icons8.com/ios-filled/20/000000/rocket--v1.png" width="16" alt=""/> MVP Features
 
-### Aktuelle Ordnerstruktur
+<div>
+  <ul>
+    <li><code>Dashboard</code> → Kostenüberblick, Verlauf, Einsparung</li>
+    <li><code>Expenses</code> → Zigaretten- und Ausgaben-Tracking</li>
+    <li><code>QuitPlan</code> → Ziele, Reduktionsplan, Meilensteine</li>
+    <li><code>Rewards</code> → Belohnungen bei Zielerreichung</li>
+    <li><code>Settings</code> → Preise, Gewohnheiten, Präferenzen</li>
+  </ul>
+</div>
+
+## <img src="https://img.icons8.com/ios-filled/20/000000/workflow.png" width="16" alt=""/> Architektur
+
+<details open>
+  <summary><strong>MVVM + Service Layer</strong></summary>
+  <br/>
+  <ul>
+    <li>UI in <code>Views</code></li>
+    <li>Feature-Logik in <code>ViewModels</code></li>
+    <li>Datenstrukturen in <code>Models</code></li>
+    <li>Infrastruktur in <code>Services</code></li>
+  </ul>
+</details>
+
+### Ordnerstruktur
 
 ```text
 BreakLoop/
@@ -44,55 +80,53 @@ BreakLoop/
 └── BreakLoopTests/
 ```
 
-## Getting Started
+## <img src="https://img.icons8.com/ios-filled/20/000000/play.png" width="16" alt=""/> Getting Started
 
-### Voraussetzungen
+<ol>
+  <li>Projekt öffnen: <code>BreakLoop/BreakLoop.xcodeproj</code></li>
+  <li>Scheme wählen: <code>BreakLoop</code></li>
+  <li>Zielgerät wählen (Simulator oder Device)</li>
+  <li>Run mit <code>Cmd + R</code></li>
+</ol>
 
-- macOS mit aktuellem Xcode.
-- iOS Simulator oder physisches iPhone.
+## <img src="https://img.icons8.com/ios-filled/20/000000/planner.png" width="16" alt=""/> Roadmap
 
-### Lokal starten
+<table>
+  <tr>
+    <th align="left">Phase</th>
+    <th align="left">Status</th>
+    <th align="left">Ziele</th>
+  </tr>
+  <tr>
+    <td><strong>1 · Scaffold</strong></td>
+    <td>✅ Fertig</td>
+    <td>Grundstruktur, Module, Platzhalter-Typen</td>
+  </tr>
+  <tr>
+    <td><strong>2 · Expense Tracking</strong></td>
+    <td>🟡 Nächster Schritt</td>
+    <td>Eingabe, Preislogik, Kostenberechnung, Persistenz</td>
+  </tr>
+  <tr>
+    <td><strong>3 · Quit Goals</strong></td>
+    <td>⏳ Geplant</td>
+    <td>Ziele, Fortschrittsberechnung, Erinnerungsbasis</td>
+  </tr>
+  <tr>
+    <td><strong>4 · Rewards</strong></td>
+    <td>⏳ Geplant</td>
+    <td>Meilensteine, Reward-Logik, Erfolgsanzeige</td>
+  </tr>
+  <tr>
+    <td><strong>5 · Insights & Polish</strong></td>
+    <td>⏳ Geplant</td>
+    <td>Trends, UX-Polish, Accessibility-Basis</td>
+  </tr>
+</table>
 
-1. Projekt öffnen: `BreakLoop/BreakLoop.xcodeproj`
-2. Scheme prüfen: `BreakLoop`
-3. Zielgerät wählen.
-4. Run (`Cmd + R`).
+## <img src="https://img.icons8.com/ios-filled/20/000000/activity-history.png" width="16" alt=""/> Aktueller Stand
 
-## Roadmap
+- Struktur steht.
+- Features noch ohne Business-Logik.
+- Nächster Fokus: `Expenses` Datenmodell + Eingabemaske + Kostenformel.
 
-### Phase 1: Scaffold (fertig)
-
-- Grundstruktur erstellt.
-- Feature-Module angelegt.
-- Platzhalter-Dateien für MVVM + Services vorhanden.
-
-### Phase 2: Expense Tracking
-
-- Eingabe täglicher Zigarettenmenge.
-- Preis pro Packung/Zigarette speichern.
-- Kostenberechnung (Tag/Woche/Monat/Jahr).
-- Persistenz lokal (erste Version).
-
-### Phase 3: Quit Goals
-
-- Ziel setzen (Reduktion oder Quit-Datum).
-- Fortschritt gegen Ziel berechnen.
-- Erinnerungslogik vorbereiten.
-
-### Phase 4: Rewards
-
-- Meilensteine definieren.
-- Reward-Logik bei Zielerreichung.
-- Einfache visuelle Erfolgsanzeige.
-
-### Phase 5: Insights und Polish
-
-- Trends und einfache Auswertungen.
-- UX-Verbesserungen + Accessibility-Basis.
-- Stabilität, Fehlerfälle, Feinschliff.
-
-## Status und Next Steps
-
-- Aktuell: Struktur steht, Features leer.
-- Nächster Fokus: `Expenses` Datenmodell + erste Eingabemaske + Kostenformel.
-- Danach: `Dashboard` mit Live-Zusammenfassung.
