@@ -1,68 +1,35 @@
-<div align="center">
-  <h1>🚭 BreakLoop</h1>
-  <p><strong>Rauchkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
+# BreakLoop
 
-  <p>
-    <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
-    <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
-    <img alt="Status" src="https://img.shields.io/badge/Status-Bootcamp%20MVP-FF9F0A?style=for-the-badge" />
-  </p>
-</div>
+BreakLoop ist mein iOS-Bootcamp-Abschlussprojekt.
 
-<br/>
+Die Idee: Raucher:innen sehen endlich klar, was ihr Konsum wirklich kostet, setzen sich Ziele und bleiben mit kleinen Rewards eher dran.
 
-## Kurzpitch
+## Warum ich die App baue
 
-BreakLoop zeigt echte Rauchkosten pro Tag, Woche, Monat, Jahr.  
-App unterstützt Verhaltensänderung über Ziele, Fortschritt, Rewards.
+Im Alltag wirken Zigarettenkosten oft „nicht so schlimm".
+Wenn man die Zahlen aber auf Woche, Monat und Jahr sieht, ändert sich der Blick schnell.
+Genau da setzt BreakLoop an.
 
-## Problem → Nutzen
+## Was im MVP drin ist
 
-<table>
-  <tr>
-    <th align="left">Problem</th>
-    <th align="left">Nutzen</th>
-  </tr>
-  <tr>
-    <td>Rauchkosten im Alltag unsichtbar</td>
-    <td>Kosten werden sofort messbar</td>
-  </tr>
-  <tr>
-    <td>Motivation fällt ohne Feedback</td>
-    <td>Ziele + Fortschritt erhöhen Motivation</td>
-  </tr>
-  <tr>
-    <td>Keine Belohnung bei Reduktion</td>
-    <td>Rewards markieren echte Erfolge</td>
-  </tr>
-</table>
+- `Dashboard`: Kostenüberblick + erste Insights
+- `Expenses`: Smoke- und Purchase-Entries
+- `QuitPlan`: Reduktions- oder Quit-Ziel
+- `Rewards`: Meilensteine sichtbar machen
+- `Settings`: Preis- und Basiswerte anpassen
 
-## MVP Features
+## Aktueller Stand
 
-<div>
-  <ul>
-    <li><code>Dashboard</code> → Kostenüberblick, Verlauf, Einsparung</li>
-    <li><code>Expenses</code> → Zigaretten- und Ausgaben-Tracking</li>
-    <li><code>QuitPlan</code> → Ziele, Reduktionsplan, Meilensteine</li>
-    <li><code>Rewards</code> → Belohnungen bei Zielerreichung</li>
-    <li><code>Settings</code> → Preise, Gewohnheiten, Präferenzen</li>
-  </ul>
-</div>
+- Projektstruktur steht
+- Design-System-Basis (Farben + Typografie) steht
+- Domain-Modelle sind angelegt
+- Nächster Fokus: Expense-Flow + Kostenberechnung
 
-## Architektur
+## Tech / Struktur
 
-<details open>
-  <summary><strong>MVVM + Service Layer</strong></summary>
-  <br/>
-  <ul>
-    <li>UI in <code>Views</code></li>
-    <li>Feature-Logik in <code>ViewModels</code></li>
-    <li>Datenstrukturen in <code>Models</code></li>
-    <li>Infrastruktur in <code>Services</code></li>
-  </ul>
-</details>
-
-### Ordnerstruktur
+- iOS + SwiftUI
+- MVVM + Service Layer
+- Feature-first Struktur
 
 ```text
 BreakLoop/
@@ -80,53 +47,20 @@ BreakLoop/
 └── BreakLoopTests/
 ```
 
-## Getting Started
+## Lokal starten
 
-<ol>
-  <li>Projekt öffnen: <code>BreakLoop/BreakLoop.xcodeproj</code></li>
-  <li>Scheme wählen: <code>BreakLoop</code></li>
-  <li>Zielgerät wählen (Simulator oder Device)</li>
-  <li>Run mit <code>Cmd + R</code></li>
-</ol>
+1. `BreakLoop/BreakLoop.xcodeproj` öffnen
+2. Scheme `BreakLoop` wählen
+3. Simulator oder Device wählen
+4. `Cmd + R`
 
-## Roadmap
+## Geplante nächsten Schritte
 
-<table>
-  <tr>
-    <th align="left">Phase</th>
-    <th align="left">Status</th>
-    <th align="left">Ziele</th>
-  </tr>
-  <tr>
-    <td><strong>1 · Scaffold</strong></td>
-    <td>✅ Fertig</td>
-    <td>Grundstruktur, Module, Platzhalter-Typen</td>
-  </tr>
-  <tr>
-    <td><strong>2 · Expense Tracking</strong></td>
-    <td>🟡 Nächster Schritt</td>
-    <td>Eingabe, Preislogik, Kostenberechnung, Persistenz</td>
-  </tr>
-  <tr>
-    <td><strong>3 · Quit Goals</strong></td>
-    <td>⏳ Geplant</td>
-    <td>Ziele, Fortschrittsberechnung, Erinnerungsbasis</td>
-  </tr>
-  <tr>
-    <td><strong>4 · Rewards</strong></td>
-    <td>⏳ Geplant</td>
-    <td>Meilensteine, Reward-Logik, Erfolgsanzeige</td>
-  </tr>
-  <tr>
-    <td><strong>5 · Insights & Polish</strong></td>
-    <td>⏳ Geplant</td>
-    <td>Trends, UX-Polish, Accessibility-Basis</td>
-  </tr>
-</table>
+1. Expense-Eingabe fertig machen (smoke + purchase)
+2. Kostenlogik (Tag/Woche/Monat/Jahr) anschließen
+3. Dashboard mit echten Werten füllen
+4. QuitPlan + Rewards Flow anbinden
 
-## Aktueller Stand
+## Hinweis
 
-- Struktur steht.
-- Features noch ohne Business-Logik.
-- Nächster Fokus: `Expenses` Datenmodell + Eingabemaske + Kostenformel.
-
+Aktueller Stand ist bewusst MVP/Bootcamp-fokussiert.
