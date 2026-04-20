@@ -2,7 +2,16 @@ import SwiftUI
 
 struct DashboardView: View {
     var body: some View {
-        Text("Dashboard")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Dashboard")
+                .font(.title.bold())
+                .foregroundStyle(AppColors.textPrimary)
+
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(24)
+        .background(AppColors.background)
+        .tint(AppColors.accent)
     }
 }
 
