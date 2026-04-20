@@ -1,6 +1,6 @@
-# Minimal Pseudocode
+# 05 pseudo flow
 
-## Global Flow
+## app start
 ```text
 onAppStart:
   if not signed in -> show sign in
@@ -10,14 +10,14 @@ onAppStart:
   show dashboard
 ```
 
-## Auth / Session
+## auth
 ```text
 onSignInSuccess(user):
   if first login or onboarding incomplete -> route onboarding
   else -> route dashboard
 ```
 
-## First-Time Onboarding
+## onboarding
 ```text
 onOnboardingSubmit(profile):
   validate profile inputs
@@ -26,7 +26,7 @@ onOnboardingSubmit(profile):
   route dashboard
 ```
 
-## Dashboard
+## dashboard
 ```text
 onDashboardOpen:
   read summary metrics
@@ -34,7 +34,7 @@ onDashboardOpen:
   render bottom entry dock
 ```
 
-## Expenses
+## expenses
 ```text
 onExpenseSubmit(input):
   validate input
@@ -43,7 +43,7 @@ onExpenseSubmit(input):
   notify dashboard + rewards
 ```
 
-## QuitPlan
+## quit plan
 ```text
 onGoalSave(goal):
   store goal
@@ -51,7 +51,7 @@ onGoalSave(goal):
   show next milestone
 ```
 
-## Rewards
+## rewards
 ```text
 onProgressUpdate(progress):
   if milestone reached -> unlock reward
@@ -59,7 +59,7 @@ onProgressUpdate(progress):
   show reward feedback
 ```
 
-## Settings
+## settings
 ```text
 onSettingsChange(values):
   store values

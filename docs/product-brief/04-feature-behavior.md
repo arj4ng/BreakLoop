@@ -1,35 +1,35 @@
-# Feature Behavior
+# 04 feature verhalten
 
-## Auth / Session
-- Nicht eingeloggt -> Sign-in Screen zuerst.
-- Eingeloggt + first login -> Onboarding Fragen zuerst.
-- Eingeloggt + onboarding fertig -> direkt Dashboard.
+## auth + session
+- nicht eingeloggt -> sign in zuerst
+- eingeloggt + first login -> onboarding zuerst
+- eingeloggt + onboarding fertig -> dashboard
 
-## First-Time Onboarding
-- Fragt Basisdaten: Konsum, Preis, Profil-Kontext.
-- Speichert Daten für Kostenlogik + Rewards-Basis.
-- Nach Submit -> Dashboard mit ersten Insights.
+## first onboarding
+- fragt basisdaten zu konsum, preis, profil
+- speichert daten für kosten + rewards baseline
+- danach direkt dashboard mit ersten insights
 
-## Dashboard
-- Zeigt: heutige Kosten, Monatskosten, Einsparung.
-- Update nach jedem neuen Expense-Eintrag.
-- Zeigt Bottom Dock mit zwei Actions:
-  - `Smoke Entry` (slide to submit)
-  - `Purchase Entry` (slide to submit)
+## dashboard
+- zeigt heutige kosten, monatskosten, einsparung
+- updated nach jedem neuen eintrag
+- bottom dock actions:
+  - smoke entry (slide to submit)
+  - purchase entry (slide to submit)
 
-## Expenses
-- Nutzer erfasst Menge + Preisbasis.
-- App berechnet Kosten sofort.
-- Werte in Verlauf verfügbar.
+## expenses
+- nutzer erfasst menge + preisbasis
+- app berechnet kosten sofort
+- werte landen im verlauf
 
-## QuitPlan
-- Nutzer setzt Zielwert oder Quit-Datum.
-- App zeigt Soll vs Ist Fortschritt.
+## quit plan
+- nutzer setzt zielwert oder quit datum
+- app zeigt soll vs ist fortschritt
 
-## Rewards
-- App prüft Meilensteine nach Updates.
-- Bei Treffer: Reward markieren.
+## rewards
+- app prüft meilensteine nach updates
+- bei treffer reward markieren
 
-## Settings
-- Nutzer ändert Preis/Gewohnheit.
-- App recalculated abhängige Kennzahlen.
+## settings
+- nutzer ändert preis/gewohnheit
+- app rechnet abhängige werte neu

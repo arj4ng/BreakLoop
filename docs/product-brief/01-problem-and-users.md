@@ -1,12 +1,12 @@
-# Problem und Nutzer
+# 01 problem + nutzer
 
-## Problem (Pain Points)
-- Rauchkosten gefühlt klein, real hoch.
-- Tageskonsum schwer ehrlich trackbar.
-- Motivation bricht ohne sichtbaren Fortschritt.
-- Sparpotenzial bleibt unsichtbar.
-- Erfolge ohne Belohnung schnell vergessen.
+## problem notizen
+- rauchkosten fühlen sich klein an, sind aber hoch
+- konsum tracking geht schnell unter im alltag
+- ohne sichtbaren fortschritt fällt motivation
+- sparpotenzial bleibt oft unsichtbar
+- erfolge ohne reward werden schnell vergessen
 
-## Target User
-- Persona 1: Gelegenheitsraucher, will Kosten senken, wenig Zeit.
-- Persona 2: Starker Raucher, will reduzieren, braucht klare Schritte.
+## nutzer bild
+- typ 1: gelegenheitsraucher, wenig zeit, will kosten runter
+- typ 2: starker raucher, will reduzieren, braucht klare schritte

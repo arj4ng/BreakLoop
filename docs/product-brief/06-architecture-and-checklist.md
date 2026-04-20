@@ -1,14 +1,14 @@
-# Architektur-Mapping und Checklist
+# 06 architektur + check
 
-## Mapping zu Scaffold
-- Views: rendern Zustand.
-- ViewModels: Actions + State-Transformation.
-- Services: Persistenz/Notification Platzhalter.
+## mapping zur struktur
+- views rendern zustand
+- viewmodels halten actions + state changes
+- services machen persistenz/notification arbeit
 
-## Review Checklist
-- Jede Story deckt klaren Pain Point.
-- Jede Feature-Sektion hat Verhalten + Pseudocode.
-- Scope In/Out klar getrennt.
-- Text bewusst kurz, keine langen Absätze.
-- Auth + first-time onboarding flow klar beschrieben.
-- Dashboard bottom dock + slide-submit design festgehalten.
+## review check
+- deckt jede story einen pain point?
+- hat jedes feature verhalten + pseudo flow?
+- ist in/out scope klar?
+- ist text kurz und klar?
+- ist auth + onboarding flow klar beschrieben?
+- ist bottom dock mit slide submit fix festgehalten?

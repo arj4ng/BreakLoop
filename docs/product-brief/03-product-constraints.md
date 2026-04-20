@@ -1,18 +1,18 @@
-# Produkt-Rahmen
+# 03 rahmen + grenzen
 
-## Assumptions
-- Nutzer kennt eigenen Zigarettenpreis ungefähr.
-- Manuelle Eingabe reicht für MVP.
-- Tägliche Nutzung kurz (unter 1 Minute).
-- Einfache Rewards motivieren genug für v1.
-- Offline-first Verhalten genügt initial.
+## annahmen
+- nutzer kennt ungefähr eigenen zigarettenpreis
+- manuelle eingabe reicht für mvp
+- nutzung bleibt kurz, meist unter 1 minute
+- einfache rewards reichen für v1
+- offline first reicht am anfang
 
-## Success Metrics (MVP)
-- >= 60% Nutzer loggen mindestens 1 Eintrag pro Woche.
-- >= 50% Nutzer setzen innerhalb 3 Tage ein Ziel.
-- >= 40% Nutzer erreichen ersten Meilenstein in 14 Tagen.
-- Median Sessiondauer <= 60 Sekunden.
+## mvp erfolgswerte
+- >= 60% machen mind. 1 eintrag pro woche
+- >= 50% setzen in 3 tagen ein ziel
+- >= 40% schaffen ersten meilenstein in 14 tagen
+- median session dauer <= 60 sekunden
 
-## Scope
-- In: Kosten-Tracking, Zielsetzung, Fortschritt, einfache Rewards, Basis-Settings.
-- Out: Social Features, Gamification-Komplexität, Wearables, AI-Coach.
+## scope
+- in: kosten tracking, ziele, fortschritt, rewards, basis settings
+- out: social, heavy gamification, wearables, ai coach

@@ -1,6 +1,32 @@
+// BreakLoop/ BreakLoop/ Core/ DesignSystem/ Typography.swift
+
+// typography
+//
+// Created by Arjang Khademi on 20.04.2026
+/*
+  ╔════════════════════════════════════════════════════════╗
+  ║  █████╗ ██████╗      ██╗ ██╗  ██╗ ███╗   ██╗  ██████╗  ║
+  ║ ██╔══██╗██╔══██╗     ██║ ██║  ██║ ████╗  ██║ ██╔════╝  ║
+  ║ ███████║██████╔╝     ██║ ███████║ ██╔██╗ ██║ ██║  ███╗ ║
+  ║ ██╔══██║██╔══██╗██   ██║ ╚════██║ ██║╚██╗██║ ██║   ██║ ║
+  ║ ██║  ██║██║  ██║╚█████╔╝      ██║ ██║ ╚████║ ╚██████╔╝ ║
+  ║ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚════╝       ╚═╝ ╚═╝  ╚═══╝  ╚═════╝  ║
+  ╚═════════════════════════════════════════ [ DEV TAG ] ══╝
+*/
+
 import SwiftUI
 
+
+// MARK: ┏━ [15 DESIGN TYPE] AppTypography
+// MARK: ┗━ Gemeinsame SF Pro typography tokens für app texte
+
+// typografie nur über tokens nutzen, keine hardcoded größen im feature code
 enum AppTypography {
+
+    // MARK: ┏━ [15 DESIGN TYPE] Weight
+    // MARK: ┗━ Wiederverwendbare font weights für typography tokens
+
+    // weight alias halten style definitionen gut lesbar
     enum Weight {
         static let regular = Font.Weight.regular
         static let medium = Font.Weight.medium
@@ -8,7 +34,6 @@ enum AppTypography {
         static let bold = Font.Weight.bold
     }
 
-    // Industry standard semantic scale for mobile UI.
     static let displayLarge = Font.system(size: 34, weight: Weight.bold, design: .default)
     static let display = Font.system(size: 28, weight: Weight.bold, design: .default)
 
@@ -30,7 +55,16 @@ enum AppTypography {
     static let buttonSecondary = Font.system(size: 15, weight: Weight.medium, design: .default)
 }
 
+
+// MARK: ┏━ [15 DESIGN TYPE] View Erweiterung
+// MARK: ┗━ Helper zum Anwenden von typography tokens
+
+// helper schlank halten, token auswahl passiert in feature views
 extension View {
+
+    // MARK: ┏━ [15 DESIGN TYPE] appTypography
+    // MARK: ┗━ Wendet ein Design System Schrift Token auf die aktuelle View an
+
     func appTypography(_ font: Font) -> some View {
         self.font(font)
     }

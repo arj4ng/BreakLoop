@@ -1,5 +1,26 @@
+// BreakLoop/ BreakLoop/ Core/ DesignSystem/ Colors.swift
+
+// colors
+//
+// Created by Arjang Khademi on 20.04.2026
+/*
+  ╔════════════════════════════════════════════════════════╗
+  ║  █████╗ ██████╗      ██╗ ██╗  ██╗ ███╗   ██╗  ██████╗  ║
+  ║ ██╔══██╗██╔══██╗     ██║ ██║  ██║ ████╗  ██║ ██╔════╝  ║
+  ║ ███████║██████╔╝     ██║ ███████║ ██╔██╗ ██║ ██║  ███╗ ║
+  ║ ██╔══██║██╔══██╗██   ██║ ╚════██║ ██║╚██╗██║ ██║   ██║ ║
+  ║ ██║  ██║██║  ██║╚█████╔╝      ██║ ██║ ╚████║ ╚██████╔╝ ║
+  ║ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚════╝       ╚═╝ ╚═╝  ╚═══╝  ╚═════╝  ║
+  ╚═════════════════════════════════════════ [ DEV TAG ] ══╝
+*/
+
 import SwiftUI
 
+
+// MARK: ┏━ [14 DESIGN COLORS] AppColors
+// MARK: ┗━ Zentrale app farben aus xcassets fürs theme
+
+// colors nur nach nutzung benennen, nie nach raw werten
 enum AppColors {
     static let background = Color("Background")
     static let surface = Color("Surface")
