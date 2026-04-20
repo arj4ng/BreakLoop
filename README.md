@@ -128,7 +128,3 @@ BreakLoop/
   <li>Simulator oder Device wählen</li>
   <li><code>Cmd + R</code></li>
 </ol>
-
-## Hinweis
-
-Aktueller Stand bleibt bewusst MVP und Bootcamp fokussiert.
