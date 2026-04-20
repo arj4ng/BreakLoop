@@ -11,12 +11,12 @@
 
 <br/>
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/info.png" width="16" alt=""/> Kurzpitch
+## Kurzpitch
 
 BreakLoop zeigt echte Rauchkosten pro Tag, Woche, Monat, Jahr.  
 App unterstützt Verhaltensänderung über Ziele, Fortschritt, Rewards.
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/idea.png" width="16" alt=""/> Problem → Nutzen
+## Problem → Nutzen
 
 <table>
   <tr>
@@ -37,7 +37,7 @@ App unterstützt Verhaltensänderung über Ziele, Fortschritt, Rewards.
   </tr>
 </table>
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/rocket--v1.png" width="16" alt=""/> MVP Features
+## MVP Features
 
 <div>
   <ul>
@@ -49,7 +49,7 @@ App unterstützt Verhaltensänderung über Ziele, Fortschritt, Rewards.
   </ul>
 </div>
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/workflow.png" width="16" alt=""/> Architektur
+## Architektur
 
 <details open>
   <summary><strong>MVVM + Service Layer</strong></summary>
@@ -80,7 +80,7 @@ BreakLoop/
 └── BreakLoopTests/
 ```
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/play.png" width="16" alt=""/> Getting Started
+## Getting Started
 
 <ol>
   <li>Projekt öffnen: <code>BreakLoop/BreakLoop.xcodeproj</code></li>
@@ -89,7 +89,7 @@ BreakLoop/
   <li>Run mit <code>Cmd + R</code></li>
 </ol>
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/planner.png" width="16" alt=""/> Roadmap
+## Roadmap
 
 <table>
   <tr>
@@ -124,7 +124,7 @@ BreakLoop/
   </tr>
 </table>
 
-## <img src="https://img.icons8.com/ios-filled/20/000000/activity-history.png" width="16" alt=""/> Aktueller Stand
+## Aktueller Stand
 
 - Struktur steht.
 - Features noch ohne Business-Logik.
