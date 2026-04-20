@@ -11,6 +11,7 @@
   </pre>
 
   <h1>🚭 BreakLoop</h1>
+  <img src="./BreakLoop/BreakLoop/Assets.xcassets/AppIcon.appiconset/Icon-iOS-Default-1024x1024@1x.png" alt="BreakLoop App Icon" width="128" />
   <p><strong>Konsumkosten sichtbar machen. Gewohnheit brechen. Fortschritt belohnen.</strong></p>
 
   <p>
