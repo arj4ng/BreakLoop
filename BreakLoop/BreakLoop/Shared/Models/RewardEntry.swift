@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Shared/ Models/ UserProfile.swift
+// BreakLoop/ BreakLoop/ Shared/ Models/ RewardEntry.swift
 
-// user profile
+// reward entry
 //
 // Created by Arjang Khademi on 27.04.2026
 /*
@@ -17,44 +17,34 @@
 import Foundation
 
 
-// MARK: ┏━ [11 MODELS] UserProfile
-// MARK: ┗━ Nutzerprofil für baseline kosten und tracking prefs
+// MARK: ┏━ [11 MODELS] RewardEntry
+// MARK: ┗━ reward event für points historie
 
-// profil hält nur kernwerte für berechnung und onboarding
-struct UserProfile: Identifiable, Codable, Hashable, Sendable {
+struct RewardEntry: Identifiable, Codable, Hashable, Sendable {
     let id: String
-    var email: String?
-    var displayName: String
-
-    // baseline pro tag als startwert falls historie noch leer ist
-    var baselineDailyConsume: Double
-
-    // fallback cost pro consume wenn kaufdaten fehlen
-    var baselineCostPerConsume: Decimal?
-
-    var onboardingCompleted: Bool
+    let userId: String
+    let consumableItemId: String?
+    var type: RewardType
+    var points: Int
+    var reason: String?
     var createdAt: Date
-    var updatedAt: Date
 
     init(
         id: String,
-        email: String? = nil,
-        displayName: String,
-        baselineDailyConsume: Double = 0,
-        baselineCostPerConsume: Decimal? = nil,
-        onboardingCompleted: Bool = false,
-        createdAt: Date = .now,
-        updatedAt: Date = .now
+        userId: String,
+        consumableItemId: String? = nil,
+        type: RewardType,
+        points: Int,
+        reason: String? = nil,
+        createdAt: Date = .now
     ) {
 
-        // init mapped inputs direkt auf modell
         self.id = id
-        self.email = email
-        self.displayName = displayName
-        self.baselineDailyConsume = max(0, baselineDailyConsume)
-        self.baselineCostPerConsume = baselineCostPerConsume
-        self.onboardingCompleted = onboardingCompleted
+        self.userId = userId
+        self.consumableItemId = consumableItemId
+        self.type = type
+        self.points = max(0, points)
+        self.reason = reason
         self.createdAt = createdAt
-        self.updatedAt = updatedAt
     }
 }

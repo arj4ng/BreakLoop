@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Shared/ Models/ UserProfile.swift
+// BreakLoop/ BreakLoop/ Shared/ Models/ ConsumeEntry.swift
 
-// user profile
+// consume entry
 //
 // Created by Arjang Khademi on 27.04.2026
 /*
@@ -17,44 +17,57 @@
 import Foundation
 
 
-// MARK: ┏━ [11 MODELS] UserProfile
-// MARK: ┗━ Nutzerprofil für baseline kosten und tracking prefs
+// MARK: ┏━ [11 MODELS] ConsumeEntry
+// MARK: ┗━ einzelner consume log mit amount, unit und optional context
 
-// profil hält nur kernwerte für berechnung und onboarding
-struct UserProfile: Identifiable, Codable, Hashable, Sendable {
+// entry enthält soft delete flags damit edits und history sauber bleiben
+struct ConsumeEntry: Identifiable, Codable, Hashable, Sendable {
     let id: String
-    var email: String?
-    var displayName: String
+    let userId: String
+    let consumableItemId: String
+    var timestamp: Date
+    var amount: Double
+    var unit: ConsumeUnit
+    var note: String?
+    var trigger: TriggerType?
 
-    // baseline pro tag als startwert falls historie noch leer ist
-    var baselineDailyConsume: Double
+    // craving level 1..10 optional für späteres insight scoring
+    var cravingLevel: Int?
 
-    // fallback cost pro consume wenn kaufdaten fehlen
-    var baselineCostPerConsume: Decimal?
-
-    var onboardingCompleted: Bool
     var createdAt: Date
     var updatedAt: Date
+    var isDeleted: Bool
+    var deletedAt: Date?
 
     init(
         id: String,
-        email: String? = nil,
-        displayName: String,
-        baselineDailyConsume: Double = 0,
-        baselineCostPerConsume: Decimal? = nil,
-        onboardingCompleted: Bool = false,
+        userId: String,
+        consumableItemId: String,
+        timestamp: Date = .now,
+        amount: Double,
+        unit: ConsumeUnit,
+        note: String? = nil,
+        trigger: TriggerType? = nil,
+        cravingLevel: Int? = nil,
         createdAt: Date = .now,
-        updatedAt: Date = .now
+        updatedAt: Date = .now,
+        isDeleted: Bool = false,
+        deletedAt: Date? = nil
     ) {
 
-        // init mapped inputs direkt auf modell
+        // init clamp schützt gegen negative amounts und out of range craving
         self.id = id
-        self.email = email
-        self.displayName = displayName
-        self.baselineDailyConsume = max(0, baselineDailyConsume)
-        self.baselineCostPerConsume = baselineCostPerConsume
-        self.onboardingCompleted = onboardingCompleted
+        self.userId = userId
+        self.consumableItemId = consumableItemId
+        self.timestamp = timestamp
+        self.amount = max(0, amount)
+        self.unit = unit
+        self.note = note
+        self.trigger = trigger
+        self.cravingLevel = cravingLevel.map { min(max($0, 1), 10) }
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.isDeleted = isDeleted
+        self.deletedAt = deletedAt
     }
 }

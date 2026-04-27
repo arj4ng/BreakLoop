@@ -1,8 +1,8 @@
-// BreakLoop/ BreakLoop/ Shared/ Models/ ConsumptionEntry.swift
+// BreakLoop/ BreakLoop/ Shared/ Models/ TriggerType.swift
 
-// consumption entry
+// trigger type
 //
-// Created by Arjang Khademi on 20.04.2026
+// Created by Arjang Khademi on 27.04.2026
 /*
   ╔════════════════════════════════════════════════════════╗
   ║  █████╗ ██████╗      ██╗ ██╗  ██╗ ███╗   ██╗  ██████╗  ║
@@ -17,32 +17,15 @@
 import Foundation
 
 
-// MARK: ┏━ [11 MODELS] ConsumptionEntry
-// MARK: ┗━ Einzelner Konsum eintrag zur Nachverfolgung vom Konsum
+// MARK: ┏━ [11 MODELS] TriggerType
+// MARK: ┗━ optionale trigger tags für spätere insights
 
-// entry bewusst minimal und append only halten
-struct ConsumptionEntry: Identifiable, Codable, Hashable, Sendable {
-    let id: UUID
-
-    // kernwert für konsum tracking pro eintrag
-    var consumedUnitsCount: Int
-
-    // zeitpunkt vom event für timeline und filter
-    var timestamp: Date
-    let createdAt: Date
-
-    // init bündelt konsum eintrag erstellung sauber
-    init(
-        id: UUID = UUID(),
-        consumedUnitsCount: Int,
-        timestamp: Date = .now,
-        createdAt: Date = .now
-    ) {
-
-        // init mapped eingaben direkt auf das model
-        self.id = id
-        self.consumedUnitsCount = consumedUnitsCount
-        self.timestamp = timestamp
-        self.createdAt = createdAt
-    }
+enum TriggerType: String, Codable, CaseIterable, Hashable, Sendable {
+    case stress
+    case social
+    case habit
+    case boredom
+    case celebration
+    case craving
+    case other
 }

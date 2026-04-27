@@ -1,6 +1,6 @@
-// BreakLoop/ BreakLoop/ Shared/ Models/ UserProfile.swift
+// BreakLoop/ BreakLoop/ Shared/ Models/ ConsumableItem.swift
 
-// user profile
+// consumable item
 //
 // Created by Arjang Khademi on 27.04.2026
 /*
@@ -17,44 +17,53 @@
 import Foundation
 
 
-// MARK: ┏━ [11 MODELS] UserProfile
-// MARK: ┗━ Nutzerprofil für baseline kosten und tracking prefs
+// MARK: ┏━ [11 MODELS] ConsumableItem
+// MARK: ┗━ user definierter konsum typ für entries und purchases
 
-// profil hält nur kernwerte für berechnung und onboarding
-struct UserProfile: Identifiable, Codable, Hashable, Sendable {
+// item bleibt flexibel für zigaretten, alkohol, caffeine oder custom
+struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
     let id: String
-    var email: String?
-    var displayName: String
+    let userId: String
+    var name: String
+    var category: ConsumableCategory
+    var defaultUnit: ConsumeUnit
 
-    // baseline pro tag als startwert falls historie noch leer ist
-    var baselineDailyConsume: Double
+    // amount die für einen consume zählt, zB 0.7g oder 1 piece
+    var defaultAmountPerConsume: Double?
 
-    // fallback cost pro consume wenn kaufdaten fehlen
-    var baselineCostPerConsume: Decimal?
+    // fallback wenn keine purchase daten da sind
+    var defaultCostPerConsume: Decimal?
 
-    var onboardingCompleted: Bool
+    var note: String?
     var createdAt: Date
     var updatedAt: Date
+    var isArchived: Bool
 
     init(
         id: String,
-        email: String? = nil,
-        displayName: String,
-        baselineDailyConsume: Double = 0,
-        baselineCostPerConsume: Decimal? = nil,
-        onboardingCompleted: Bool = false,
+        userId: String,
+        name: String,
+        category: ConsumableCategory,
+        defaultUnit: ConsumeUnit,
+        defaultAmountPerConsume: Double? = nil,
+        defaultCostPerConsume: Decimal? = nil,
+        note: String? = nil,
         createdAt: Date = .now,
-        updatedAt: Date = .now
+        updatedAt: Date = .now,
+        isArchived: Bool = false
     ) {
 
         // init mapped inputs direkt auf modell
         self.id = id
-        self.email = email
-        self.displayName = displayName
-        self.baselineDailyConsume = max(0, baselineDailyConsume)
-        self.baselineCostPerConsume = baselineCostPerConsume
-        self.onboardingCompleted = onboardingCompleted
+        self.userId = userId
+        self.name = name
+        self.category = category
+        self.defaultUnit = defaultUnit
+        self.defaultAmountPerConsume = defaultAmountPerConsume
+        self.defaultCostPerConsume = defaultCostPerConsume
+        self.note = note
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.isArchived = isArchived
     }
 }

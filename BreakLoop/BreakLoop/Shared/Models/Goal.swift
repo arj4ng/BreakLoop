@@ -20,7 +20,7 @@ import Foundation
 // MARK: ┏━ [08 GOALS] Goal
 // MARK: ┗━ Nutzerziel für tägliche Reduktion oder Target Datum
 
-// ziel model generisch halten, damit rewards/progress später reusable bleiben
+// ziel model generisch, damit rewards/progress später reusable bleiben
 struct Goal: Identifiable, Codable, Hashable, Sendable {
 
     // MARK: ┏━ [08 GOALS] Kind
