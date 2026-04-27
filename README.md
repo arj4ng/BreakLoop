@@ -17,7 +17,7 @@
   <p>
     <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
     <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
-    <img alt="Status" src="https://img.shields.io/badge/Status-In%20Arbeit-FF9F0A?style=for-the-badge" />
+    <img alt="Status" src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-FF9F0A?style=for-the-badge" />
   </p>
 </div>
 
@@ -36,14 +36,13 @@ Genau da setzt BreakLoop an.
 ## Was aktuell drin ist
 
 <ul>
-  <li><code>Dashboard</code> → Scaffold + Platz für Live Insights</li>
-  <li><code>Expenses</code> → Scaffold für Consume und Purchase Flow</li>
-  <li><code>ConsumptionPlan</code> → Scaffold für Reduktionsziele</li>
-  <li><code>Rewards</code> → Scaffold für Reward Anzeige</li>
-  <li><code>Settings</code> → Scaffold für Profile und App Settings</li>
+  <li><code>Onboarding Flow</code> → Mehrstufig, generisch für verschiedene Konsumtypen, mit Cost/Usage Baseline</li>
+  <li><code>Auth Flow</code> → Sign in, Register, Guest mit Routing über Root Flow</li>
+  <li><code>Dashboard</code> → Platzhalter Screen mit Sign out und Flow Integration</li>
   <li><code>Shared Models</code> → User, Consumable, ConsumeEntry, PurchaseEntry, Rewards, Stats</li>
-  <li><code>CalculationService</code> → Kosten, Average, Saved Money, Reward Punkte, Consume free Checks</li>
-  <li><code>Firebase</code> → Auth + Firestore + Messaging integriert und konfiguriert</li>
+  <li><code>CalculationService</code> → Kosten, Durchschnitt, Ersparnis, Reward Logik inkl. Bonus Dedupe und Unit Mapping</li>
+  <li><code>Firestore Repositories</code> → CRUD für Profile, Consumables, ConsumeEntries, PurchaseEntries, Rewards</li>
+  <li><code>Firebase</code> → Auth + Firestore integriert, guestUsers/users Scope vorbereitet</li>
 </ul>
 
 ## Tech und Struktur
@@ -104,13 +103,18 @@ BreakLoop/
   </tr>
   <tr>
     <td>Repository Implementierung</td>
-    <td>🟡 In Arbeit</td>
-    <td>Firestore CRUD als nächster konkreter Schritt</td>
+    <td>✅ Fertig</td>
+    <td>Firestore CRUD inkl. guest/registered Scope, Export/Import Snapshot Logik</td>
   </tr>
   <tr>
-    <td>UI Umsetzung</td>
+    <td>Onboarding + Auth UI</td>
+    <td>🟡 In Arbeit</td>
+    <td>Flow steht, laufender UX/Polish Feinschliff</td>
+  </tr>
+  <tr>
+    <td>Feature Screens UI</td>
     <td>⏳ Geplant</td>
-    <td>Views bleiben absichtlich noch Scaffold only</td>
+    <td>Dashboard, Expenses, Rewards, Settings und Plan Screens als nächster Block</td>
   </tr>
 </table>
 
@@ -134,17 +138,23 @@ BreakLoop/
   </tr>
   <tr>
     <td><strong>3 · Firebase Data Layer</strong></td>
-    <td>🟡 Nächster Schritt</td>
-    <td>Auth Flow und Firestore Repositories mit echten Daten</td>
+    <td>✅ Fertig</td>
+    <td>Auth + Repositories + guest/registered Datenpfade stehen</td>
   </tr>
   <tr>
-    <td><strong>4 · Entry Flows + Dashboard UI</strong></td>
-    <td>⏳ Geplant</td>
-    <td>Consume/Purchase Eingabe und Dashboard mit Live Werten</td>
+    <td><strong>4 · Onboarding & Auth UX</strong></td>
+    <td>🟡 In Arbeit</td>
+    <td>Onboarding/Registration/SignIn Flow mit gutem UX Verhalten und stabilem Routing</td>
   </tr>
   <tr>
-    <td><strong>5 · Rewards + Insights + Polish</strong></td>
+    <td><strong>5 · Entry Flows + Dashboard UI</strong></td>
     <td>⏳ Geplant</td>
-    <td>Streaks, Rewards Screen, bessere Auswertung, UX Feinschliff</td>
+    <td>Consume/Purchase Eingabe, Dashboard mit Live Werten, danach Rewards/Insights Polish</td>
   </tr>
 </table>
+
+## Aktueller Fokus
+
+- Onboarding UX finalisieren (Flow ohne harte Sprünge, klare CTA am Ende)
+- Register/SignIn sauber vom Onboarding aus öffnen und Datenübergabe stabil halten
+- Erste echte Entry Flows anbinden (<code>ConsumeEntry</code> / <code>PurchaseEntry</code>)
