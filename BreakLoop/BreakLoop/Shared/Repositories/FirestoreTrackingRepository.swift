@@ -272,6 +272,7 @@ final class FirestoreTrackingRepository:
                 id: targetUserId,
                 email: profile.email,
                 displayName: profile.displayName,
+                preferredCurrencyCode: profile.preferredCurrencyCode,
                 baselineDailyConsume: profile.baselineDailyConsume,
                 baselineCostPerConsume: profile.baselineCostPerConsume,
                 isGuestAccount: false,
@@ -291,6 +292,7 @@ final class FirestoreTrackingRepository:
                 category: item.category,
                 defaultUnit: item.defaultUnit,
                 defaultAmountPerConsume: item.defaultAmountPerConsume,
+                defaultUnitsPerPurchase: item.defaultUnitsPerPurchase,
                 defaultCostPerConsume: item.defaultCostPerConsume,
                 note: item.note,
                 createdAt: item.createdAt,
@@ -352,6 +354,7 @@ final class FirestoreTrackingRepository:
                 consumableItemId: entry.consumableItemId,
                 type: entry.type,
                 points: entry.points,
+                periodKey: entry.periodKey,
                 reason: entry.reason,
                 createdAt: entry.createdAt
             )
@@ -409,6 +412,7 @@ final class FirestoreTrackingRepository:
             "id": value.id,
             "email": value.email as Any,
             "displayName": value.displayName,
+            "preferredCurrencyCode": value.preferredCurrencyCode,
             "baselineDailyConsume": value.baselineDailyConsume,
             "baselineCostPerConsume": decimalToNumber(value.baselineCostPerConsume) as Any,
             "isGuestAccount": value.isGuestAccount,
@@ -428,6 +432,7 @@ final class FirestoreTrackingRepository:
             "category": value.category.rawValue,
             "defaultUnit": value.defaultUnit.rawValue,
             "defaultAmountPerConsume": value.defaultAmountPerConsume as Any,
+            "defaultUnitsPerPurchase": value.defaultUnitsPerPurchase as Any,
             "defaultCostPerConsume": decimalToNumber(value.defaultCostPerConsume) as Any,
             "note": value.note as Any,
             "createdAt": Timestamp(date: value.createdAt),
@@ -486,6 +491,7 @@ final class FirestoreTrackingRepository:
             "consumableItemId": value.consumableItemId as Any,
             "type": value.type.rawValue,
             "points": value.points,
+            "periodKey": value.periodKey as Any,
             "reason": value.reason as Any,
             "createdAt": Timestamp(date: value.createdAt)
         ]
@@ -499,6 +505,7 @@ final class FirestoreTrackingRepository:
 
         let id = (data["id"] as? String) ?? fallbackId
         let email = data["email"] as? String
+        let preferredCurrencyCode = data["preferredCurrencyCode"] as? String ?? "EUR"
         let baselineDailyConsume = data["baselineDailyConsume"] as? Double ?? 0
         let baselineCostPerConsume = numberToDecimal(data["baselineCostPerConsume"])
         let isGuestAccount = data["isGuestAccount"] as? Bool ?? false
@@ -511,6 +518,7 @@ final class FirestoreTrackingRepository:
             id: id,
             email: email,
             displayName: displayName,
+            preferredCurrencyCode: preferredCurrencyCode,
             baselineDailyConsume: baselineDailyConsume,
             baselineCostPerConsume: baselineCostPerConsume,
             isGuestAccount: isGuestAccount,
@@ -539,6 +547,7 @@ final class FirestoreTrackingRepository:
             category: category,
             defaultUnit: defaultUnit,
             defaultAmountPerConsume: data["defaultAmountPerConsume"] as? Double,
+            defaultUnitsPerPurchase: data["defaultUnitsPerPurchase"] as? Double,
             defaultCostPerConsume: numberToDecimal(data["defaultCostPerConsume"]),
             note: data["note"] as? String,
             createdAt: timestampToDate(data["createdAt"]) ?? .now,
@@ -624,6 +633,7 @@ final class FirestoreTrackingRepository:
             consumableItemId: data["consumableItemId"] as? String,
             type: type,
             points: data["points"] as? Int ?? 0,
+            periodKey: data["periodKey"] as? String,
             reason: data["reason"] as? String,
             createdAt: timestampToDate(data["createdAt"]) ?? .now
         )

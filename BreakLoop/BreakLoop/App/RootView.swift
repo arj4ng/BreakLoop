@@ -36,6 +36,9 @@ struct RootView: View {
     // onboarding steuert ob auth als login, register oder guest startet
     @State private var authEntryIntent: AuthEntryIntent = .signIn
 
+    // true nur wenn auth route aus onboarding geöffnet wurde
+    @State private var authOpenedFromOnboarding: Bool = false
+
     // aktive uid im root für spätere dependency injection
     @State private var userId: String?
 
@@ -47,6 +50,12 @@ struct RootView: View {
 
     // draft aus onboarding wird nach erstem login auf user profil geschrieben
     @State private var pendingOnboardingDraft: OnboardingDraft?
+
+    // register wird direkt über onboarding als modal geöffnet
+    @State private var showsOnboardingRegisterSheet: Bool = false
+
+    // sign in wird aus onboarding als modal geöffnet
+    @State private var showsOnboardingAuthSheet: Bool = false
 
     // auth service prüft session und guest fallback
     private let authService: AuthServiceProtocol = FirebaseAuthService()
@@ -65,11 +74,15 @@ struct RootView: View {
 
                     // nach auth change route erneut auflösen
                     route = .loading
+                    authOpenedFromOnboarding = false
 
                     Task {
                         await resolveInitialRoute()
                     }
-                }, initialIntent: authEntryIntent)
+                }, initialIntent: authEntryIntent, canGoBackToOnboarding: authOpenedFromOnboarding, onBackToOnboarding: {
+                    authOpenedFromOnboarding = false
+                    route = .onboarding
+                })
 
             case .onboarding:
                 OnboardingView(
@@ -90,6 +103,38 @@ struct RootView: View {
             // bootstrap läuft beim app start und setzt route once
             await resolveInitialRoute()
         }
+        .sheet(isPresented: $showsOnboardingRegisterSheet) {
+            RegisterView(authService: authService, onRegistered: {
+                showsOnboardingRegisterSheet = false
+                route = .loading
+                authOpenedFromOnboarding = false
+
+                Task {
+                    await resolveInitialRoute()
+                }
+            }, onClose: {
+                showsOnboardingRegisterSheet = false
+            })
+        }
+        .sheet(isPresented: $showsOnboardingAuthSheet) {
+            AuthView(
+                authService: authService,
+                onAuthenticated: {
+                    showsOnboardingAuthSheet = false
+                    route = .loading
+                    authOpenedFromOnboarding = false
+
+                    Task {
+                        await resolveInitialRoute()
+                    }
+                },
+                initialIntent: .signIn,
+                canGoBackToOnboarding: true,
+                onBackToOnboarding: {
+                    showsOnboardingAuthSheet = false
+                }
+            )
+        }
     }
 
     private func resolveInitialRoute() async {
@@ -97,6 +142,7 @@ struct RootView: View {
 
             // default für nicht eingeloggte user immer onboarding
             route = .onboarding
+            authOpenedFromOnboarding = false
             return
         }
 
@@ -116,6 +162,7 @@ struct RootView: View {
 
             // bei fehler sicher auf auth fallback gehen
             route = .auth
+            authOpenedFromOnboarding = false
         }
     }
 
@@ -130,6 +177,7 @@ struct RootView: View {
                     id: existing.id,
                     email: session.email,
                     displayName: existing.displayName,
+                    preferredCurrencyCode: existing.preferredCurrencyCode,
                     baselineDailyConsume: existing.baselineDailyConsume,
                     baselineCostPerConsume: existing.baselineCostPerConsume,
                     isGuestAccount: session.isAnonymous,
@@ -149,6 +197,7 @@ struct RootView: View {
             id: session.userId,
             email: session.email,
             displayName: session.isAnonymous ? "Guest" : "User",
+            preferredCurrencyCode: "EUR",
             baselineDailyConsume: 0,
             baselineCostPerConsume: nil,
             isGuestAccount: session.isAnonymous,
@@ -165,7 +214,16 @@ struct RootView: View {
         // onboarding nur local abschließen, account save passiert nach auth
         pendingOnboardingDraft = draft
         authEntryIntent = intent
-        route = .auth
+        authOpenedFromOnboarding = true
+
+        // register flow direkt öffnen statt über login screen
+        if intent == .register {
+            showsOnboardingRegisterSheet = true
+        } else if intent == .signIn {
+            showsOnboardingAuthSheet = true
+        } else {
+            route = .auth
+        }
     }
 
     private func applyPendingOnboardingIfNeeded(baseProfile: UserProfile?, session: AuthUserSession) async throws -> UserProfile? {
@@ -179,6 +237,7 @@ struct RootView: View {
             id: base.id,
             email: session.email,
             displayName: finalName,
+            preferredCurrencyCode: draft.preferredCurrencyCode,
             baselineDailyConsume: draft.baselineDailyConsume,
             baselineCostPerConsume: draft.baselineCostPerConsume,
             isGuestAccount: session.isAnonymous,
@@ -197,6 +256,7 @@ struct RootView: View {
                 category: draft.firstConsumableCategory,
                 defaultUnit: draft.firstConsumableUnit,
                 defaultAmountPerConsume: 1,
+                defaultUnitsPerPurchase: draft.firstConsumableUnitsPerPurchase,
                 defaultCostPerConsume: draft.baselineCostPerConsume,
                 note: nil,
                 createdAt: .now,
@@ -218,10 +278,12 @@ struct RootView: View {
             currentProfile = nil
             userId = nil
             authEntryIntent = .signIn
-            route = .auth
+            authOpenedFromOnboarding = false
+            route = .onboarding
         } catch {
             authEntryIntent = .signIn
-            route = .auth
+            authOpenedFromOnboarding = false
+            route = .onboarding
         }
     }
 }

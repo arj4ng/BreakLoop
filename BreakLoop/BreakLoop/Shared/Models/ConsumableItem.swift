@@ -41,6 +41,9 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
     // amount die für einen consume zählt, zB 0.7g oder 1 piece
     var defaultAmountPerConsume: Double?
 
+    // default units in einem purchase container zB pack=20 piece
+    var defaultUnitsPerPurchase: Double?
+
     // fallback wenn keine purchase daten da sind
     var defaultCostPerConsume: Decimal?
 
@@ -62,6 +65,7 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         category: ConsumableCategory,
         defaultUnit: ConsumeUnit,
         defaultAmountPerConsume: Double? = nil,
+        defaultUnitsPerPurchase: Double? = nil,
         defaultCostPerConsume: Decimal? = nil,
         note: String? = nil,
         createdAt: Date = .now,
@@ -76,6 +80,7 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         self.category = category
         self.defaultUnit = defaultUnit
         self.defaultAmountPerConsume = defaultAmountPerConsume
+        self.defaultUnitsPerPurchase = defaultUnitsPerPurchase.map { max(0, $0) }
         self.defaultCostPerConsume = defaultCostPerConsume
         self.note = note
 

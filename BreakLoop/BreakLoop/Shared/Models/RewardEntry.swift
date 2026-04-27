@@ -36,6 +36,7 @@ struct RewardEntry: Identifiable, Codable, Hashable, Sendable {
 
     // punktestand für event
     var points: Int
+    var periodKey: String?
     var reason: String?
     var createdAt: Date
 
@@ -45,6 +46,7 @@ struct RewardEntry: Identifiable, Codable, Hashable, Sendable {
         consumableItemId: String? = nil,
         type: RewardType,
         points: Int,
+        periodKey: String? = nil,
         reason: String? = nil,
         createdAt: Date = .now
     ) {
@@ -57,6 +59,7 @@ struct RewardEntry: Identifiable, Codable, Hashable, Sendable {
 
         // keine negativen punkte speichern
         self.points = max(0, points)
+        self.periodKey = periodKey
         self.reason = reason
         self.createdAt = createdAt
     }

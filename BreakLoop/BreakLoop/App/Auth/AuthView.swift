@@ -38,6 +38,12 @@ struct AuthView: View {
     // intent erlaubt onboarding gesteuerten einstieg
     let initialIntent: AuthEntryIntent
 
+    // true wenn auth aus onboarding geöffnet wurde
+    let canGoBackToOnboarding: Bool
+
+    // optionaler callback zurück zu onboarding
+    let onBackToOnboarding: (() -> Void)?
+
     // migration repo prüft und migriert guest daten falls nötig
     private let migrationRepository = FirestoreTrackingRepository()
 
@@ -45,7 +51,7 @@ struct AuthView: View {
     @State private var email: String = ""
     @State private var password: String = ""
 
-    // steuert register modal präsentation
+    // register sheet wird über onboarding intent geöffnet
     @State private var showsRegisterView: Bool = false
 
     // loading blockt doppelte requests
@@ -82,14 +88,41 @@ struct AuthView: View {
                 .offset(x: -140, y: -120)
 
             VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    Image(systemName: "leaf.fill")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Color("BrandAccentStrong"))
+                ZStack {
+                    HStack(spacing: 8) {
+                        if canGoBackToOnboarding {
+                            Button {
+                                onBackToOnboarding?()
+                            } label: {
+                                Label("Back", systemImage: "chevron.left")
+                                    .font(.footnote.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color("TextSecondary"))
+                            .background(
+                                Capsule()
+                                    .fill(Color("Surface"))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color("Border"), lineWidth: 1)
+                                    )
+                            )
+                        }
 
-                    Text("BreakLoop")
-                        .font(.title2.bold())
-                        .foregroundStyle(Color("TextPrimary"))
+                        Spacer()
+                    }
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "leaf.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Color("BrandAccentStrong"))
+
+                        Text("BreakLoop")
+                            .font(.title2.bold())
+                            .foregroundStyle(Color("TextPrimary"))
+                    }
                 }
                 .padding(.top, 6)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -144,46 +177,6 @@ struct AuthView: View {
                         .buttonStyle(.borderedProminent)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .disabled(isLoading || email.isEmpty || password.isEmpty)
-
-                        Button {
-                            showsRegisterView = true
-                        } label: {
-                            Label("Create account", systemImage: "person.crop.circle.badge.plus")
-                                .font(.headline)
-                                .foregroundStyle(Color("ButtonSecondaryText"))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .fill(Color("ButtonSecondaryBackground"))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color("BorderStrong"), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isLoading)
-
-                        Button {
-                            Task { await continueAsGuest() }
-                        } label: {
-                            Label("Continue as Guest", systemImage: "person.crop.circle.badge.questionmark")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Color("TextPrimary"))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color("Surface"))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .stroke(Color("Border"), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isLoading)
                     }
                 }
                 .padding(.horizontal, 22)
@@ -203,13 +196,6 @@ struct AuthView: View {
             .padding(.top, 4)
             .safeAreaPadding(.top, 8)
         }
-        .sheet(isPresented: $showsRegisterView) {
-            RegisterView(authService: authService) {
-
-                // nach register root route refresh triggern
-                onAuthenticated()
-            }
-        }
         .alert("Existing account found", isPresented: $showsGuestDataDecisionPrompt) {
             Button("Cancel", role: .cancel) {}
             Button("Continue") {
@@ -217,6 +203,11 @@ struct AuthView: View {
             }
         } message: {
             Text("Guest data will be replaced by existing account data. If the existing account is empty, your guest data will be migrated.")
+        }
+        .sheet(isPresented: $showsRegisterView) {
+            RegisterView(authService: authService, onRegistered: {
+                onAuthenticated()
+            }, onClose: nil)
         }
         .task {
             await applyInitialIntentIfNeeded()
@@ -354,5 +345,11 @@ struct AuthView: View {
 }
 
 #Preview {
-    AuthView(authService: FirebaseAuthService(), onAuthenticated: {}, initialIntent: .signIn)
+    AuthView(
+        authService: FirebaseAuthService(),
+        onAuthenticated: {},
+        initialIntent: .signIn,
+        canGoBackToOnboarding: true,
+        onBackToOnboarding: {}
+    )
 }

@@ -24,6 +24,7 @@ enum TrackingMockData {
         id: "user_demo_01",
         email: "demo@breakloop.app",
         displayName: "Demo User",
+        preferredCurrencyCode: "EUR",
         baselineDailyConsume: 10,
         baselineCostPerConsume: Decimal(string: "0.45"),
         isGuestAccount: false,
@@ -39,6 +40,7 @@ enum TrackingMockData {
             category: .nicotine,
             defaultUnit: .piece,
             defaultAmountPerConsume: 1,
+            defaultUnitsPerPurchase: 20,
             defaultCostPerConsume: Decimal(string: "0.45")
         ),
         ConsumableItem(

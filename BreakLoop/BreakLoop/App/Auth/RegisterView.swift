@@ -29,6 +29,9 @@ struct RegisterView: View {
     // callback für root re-route nach erfolgreichem register
     let onRegistered: () -> Void
 
+    // optionaler close callback wenn register als eigene route läuft
+    let onClose: (() -> Void)?
+
     // dismiss schließt modal nach erfolg oder cancel
     @Environment(\.dismiss) private var dismiss
 
@@ -115,7 +118,11 @@ struct RegisterView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") {
-                        dismiss()
+                        if let onClose {
+                            onClose()
+                        } else {
+                            dismiss()
+                        }
                     }
                 }
             }
@@ -223,5 +230,5 @@ struct RegisterView: View {
 }
 
 #Preview {
-    RegisterView(authService: FirebaseAuthService(), onRegistered: {})
+    RegisterView(authService: FirebaseAuthService(), onRegistered: {}, onClose: nil)
 }

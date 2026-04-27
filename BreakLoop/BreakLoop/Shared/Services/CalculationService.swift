@@ -24,6 +24,7 @@ struct CalculationService {
 
     // kalender injizierbar für tests mit fixem date setup
     private let calendar: Calendar
+    private let epsilon: Double = 0.000_001
 
     init(calendar: Calendar = .current) {
         self.calendar = calendar
@@ -119,13 +120,17 @@ struct CalculationService {
     ) -> Double {
         guard lookbackDays > 0 else { return max(0, profile.baselineDailyConsume) }
 
-        let startDate = calendar.date(byAdding: .day, value: -(lookbackDays - 1), to: dayInterval(for: now).start) ?? now
-        let range = DateInterval(start: startDate, end: now)
+        // baseline immer aus vergangenheit, aktueller tag fliegt raus
+        let todayStart = dayInterval(for: now).start
+        let startDate = calendar.date(byAdding: .day, value: -lookbackDays, to: todayStart) ?? todayStart
+        let range = DateInterval(start: startDate, end: todayStart)
+
+        guard range.duration > 0 else { return max(0, profile.baselineDailyConsume) }
 
         let total = totalConsumes(entries: entries, item: item, within: range)
 
         // first day / no history -> baseline oder 0
-        if total == 0 {
+        if isZero(total) {
             return max(0, profile.baselineDailyConsume)
         }
 
@@ -155,18 +160,21 @@ struct CalculationService {
         lookbackDays: Int = TrackingConstants.defaultAverageLookbackDays,
         now: Date = .now
     ) -> Double {
-        calculateDailyAverage(
+        let dailyAverage = calculateDailyAverage(
             entries: entries,
             item: item,
             profile: profile,
             lookbackDays: lookbackDays,
             now: now
-        ) * 30
+        )
+
+        return dailyAverage * Double(daysInMonth(for: now))
     }
 
 
     // MARK: - money
 
+    // reine kaufausgaben im zeitraum
     func calculateMoneySpent(
         purchases: [PurchaseEntry],
         consumableItemId: String,
@@ -177,21 +185,63 @@ struct CalculationService {
             .reduce(.zero) { $0 + $1.price }
     }
 
+    // consumebasierte ausgabe im zeitraum auf basis cost per consume
+    func calculateConsumedMoneySpent(
+        entries: [ConsumeEntry],
+        purchases: [PurchaseEntry],
+        item: ConsumableItem,
+        profile: UserProfile,
+        within interval: DateInterval
+    ) -> Decimal {
+        let consumed = totalConsumes(entries: entries, item: item, within: interval)
+        guard consumed > 0 else { return .zero }
+
+        let costPerConsume = calculateEstimatedCostPerConsume(item: item, purchases: purchases, profile: profile)
+        guard costPerConsume > 0 else { return .zero }
+
+        return decimal(from: consumed) * costPerConsume
+    }
+
     // estimated kosten pro consume über purchases + fallback item/profile
     func calculateEstimatedCostPerConsume(
         item: ConsumableItem,
         purchases: [PurchaseEntry],
-        profile: UserProfile
+        profile: UserProfile,
+        useProfileFallback: Bool = false
     ) -> Decimal {
         let itemPurchases = filteredPurchases(purchases, consumableItemId: item.id)
 
-        // weighted average pro unit aus purchases
-        let totalSpent = itemPurchases.reduce(Decimal.zero) { $0 + $1.price }
-        let totalQuantity = itemPurchases.reduce(0.0) { $0 + max(0, $1.quantity) }
+        // weighted average pro defaultUnit aus purchases
+        var totalSpendInDefaultUnit = Decimal.zero
+        var totalDefaultQuantity = 0.0
+
+        for purchase in itemPurchases {
+            guard
+                let defaultQuantity = convertedQuantityToDefaultUnit(
+                    quantity: purchase.quantity,
+                    from: purchase.unit,
+                    item: item
+                ),
+                defaultQuantity > 0
+            else {
+                continue
+            }
+
+            let safeDefaultQuantity = decimal(from: defaultQuantity)
+
+            // primär gespeicherte unit cost nutzen, fallback auf price/qty
+            if let normalizedCost = normalizedCalculatedCostPerDefaultUnit(purchase: purchase, item: item), normalizedCost > 0 {
+                totalSpendInDefaultUnit += normalizedCost * safeDefaultQuantity
+            } else if purchase.price > 0 {
+                totalSpendInDefaultUnit += purchase.price
+            }
+
+            totalDefaultQuantity += defaultQuantity
+        }
 
         // primär datenquelle = weighted purchase average
-        if totalQuantity > 0 {
-            let costPerUnit = totalSpent / decimal(from: totalQuantity)
+        if totalDefaultQuantity > 0, totalSpendInDefaultUnit > 0 {
+            let costPerUnit = totalSpendInDefaultUnit / decimal(from: totalDefaultQuantity)
             let amountPerConsume = max(0.0001, item.defaultAmountPerConsume ?? 1)
             return costPerUnit * decimal(from: amountPerConsume)
         }
@@ -201,8 +251,8 @@ struct CalculationService {
             return defaultCost
         }
 
-        // fallback 2 = profil baseline cost
-        if let baselineCost = profile.baselineCostPerConsume, baselineCost > 0 {
+        // fallback 2 = profil baseline cost nur wenn explizit erlaubt
+        if useProfileFallback, let baselineCost = profile.baselineCostPerConsume, baselineCost > 0 {
             return baselineCost
         }
 
@@ -293,7 +343,8 @@ struct CalculationService {
         item: ConsumableItem,
         profile: UserProfile,
         date: Date,
-        lookbackDays: Int = TrackingConstants.defaultAverageLookbackDays
+        lookbackDays: Int = TrackingConstants.defaultAverageLookbackDays,
+        rewardEntries: [RewardEntry] = []
     ) -> Int {
         let averagePerDay = calculateDailyAverage(
             entries: entries,
@@ -310,15 +361,33 @@ struct CalculationService {
 
         var points = avoided * TrackingConstants.pointsPerAvoidedConsume
 
-        if detectConsumeFreeDay(entries: entries, item: item, date: date) {
+        if detectConsumeFreeDay(entries: entries, item: item, date: date) &&
+            !hasRewardBonusAlready(
+                rewardEntries: rewardEntries,
+                itemId: item.id,
+                type: .consumeFreeDay,
+                date: date
+            ) {
             points += TrackingConstants.consumeFreeDayBonus
         }
 
-        if detectConsumeFreeWeek(entries: entries, item: item, date: date) {
+        if detectConsumeFreeWeek(entries: entries, item: item, date: date) &&
+            !hasRewardBonusAlready(
+                rewardEntries: rewardEntries,
+                itemId: item.id,
+                type: .consumeFreeWeek,
+                date: date
+            ) {
             points += TrackingConstants.consumeFreeWeekBonus
         }
 
-        if detectConsumeFreeMonth(entries: entries, item: item, date: date) {
+        if detectConsumeFreeMonth(entries: entries, item: item, date: date) &&
+            !hasRewardBonusAlready(
+                rewardEntries: rewardEntries,
+                itemId: item.id,
+                type: .consumeFreeMonth,
+                date: date
+            ) {
             points += TrackingConstants.consumeFreeMonthBonus
         }
 
@@ -330,7 +399,7 @@ struct CalculationService {
         item: ConsumableItem,
         date: Date
     ) -> Bool {
-        getConsumesForDay(entries: entries, item: item, date: date) == 0
+        isZero(getConsumesForDay(entries: entries, item: item, date: date))
     }
 
     func detectConsumeFreeWeek(
@@ -338,7 +407,7 @@ struct CalculationService {
         item: ConsumableItem,
         date: Date
     ) -> Bool {
-        getConsumesForWeek(entries: entries, item: item, date: date) == 0
+        isZero(getConsumesForWeek(entries: entries, item: item, date: date))
     }
 
     func detectConsumeFreeMonth(
@@ -346,7 +415,27 @@ struct CalculationService {
         item: ConsumableItem,
         date: Date
     ) -> Bool {
-        getConsumesForMonth(entries: entries, item: item, date: date) == 0
+        isZero(getConsumesForMonth(entries: entries, item: item, date: date))
+    }
+
+    // stabiler period key für dedupe beim speichern von bonus rewards
+    func rewardPeriodKey(for type: RewardType, date: Date) -> String? {
+        switch type {
+        case .consumeFreeDay:
+            let comp = calendar.dateComponents([.year, .month, .day], from: date)
+            guard let year = comp.year, let month = comp.month, let day = comp.day else { return nil }
+            return "day-\(year)-\(month)-\(day)"
+        case .consumeFreeWeek:
+            let comp = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+            guard let year = comp.yearForWeekOfYear, let week = comp.weekOfYear else { return nil }
+            return "week-\(year)-\(week)"
+        case .consumeFreeMonth:
+            let comp = calendar.dateComponents([.year, .month], from: date)
+            guard let year = comp.year, let month = comp.month else { return nil }
+            return "month-\(year)-\(month)"
+        default:
+            return nil
+        }
     }
 
 
@@ -366,35 +455,105 @@ struct CalculationService {
 
     // normalisiert amount auf consume-count basis für unterschiedliche units
     private func normalizedConsumeAmount(entry: ConsumeEntry, item: ConsumableItem) -> Double {
-        let safeAmount = max(0, entry.amount)
-
-        // wenn unit gleich, dann amount per consume anwenden
-        if entry.unit == item.defaultUnit {
-            let amountPerConsume = max(0.0001, item.defaultAmountPerConsume ?? 1)
-            return safeAmount / amountPerConsume
+        guard
+            let converted = convertedQuantityToDefaultUnit(
+                quantity: entry.amount,
+                from: entry.unit,
+                item: item
+            )
+        else {
+            return 0
         }
 
-        // einfache fallback konvertierung falls units nicht matchen
-        let fromFactor = unitFactor(for: entry.unit)
-        let toFactor = unitFactor(for: item.defaultUnit)
-
-        guard toFactor > 0 else { return 0 }
-
-        let converted = safeAmount * (fromFactor / toFactor)
         let amountPerConsume = max(0.0001, item.defaultAmountPerConsume ?? 1)
         return converted / amountPerConsume
     }
 
-    // faktor nur grober fallback, später kann custom conversion pro item kommen
-    private func unitFactor(for unit: ConsumeUnit) -> Double {
-        switch unit {
-        case .piece: return 1
-        case .pack: return 20
-        case .gram: return 1
-        case .milliliter: return 1
-        case .cup: return 1
-        case .dose: return 1
-        case .other: return 1
+    // konvertiert quantity von source unit in item.defaultUnit
+    private func convertedQuantityToDefaultUnit(
+        quantity: Double,
+        from sourceUnit: ConsumeUnit,
+        item: ConsumableItem
+    ) -> Double? {
+        let safeQuantity = max(0, quantity)
+        guard safeQuantity > 0 else { return 0 }
+
+        if sourceUnit == item.defaultUnit {
+            return safeQuantity
+        }
+
+        // pack conversion nur mit item metadata, kein hardcoded 20er wert
+        if sourceUnit == .pack, item.defaultUnit != .pack {
+            guard let unitsPerPurchase = item.defaultUnitsPerPurchase, unitsPerPurchase > 0 else { return nil }
+            return safeQuantity * unitsPerPurchase
+        }
+
+        if item.defaultUnit == .pack, sourceUnit != .pack {
+            guard let unitsPerPurchase = item.defaultUnitsPerPurchase, unitsPerPurchase > 0 else { return nil }
+            return safeQuantity / unitsPerPurchase
+        }
+
+        // sonst keine implizite cross unit conversion
+        return nil
+    }
+
+    private func normalizedCalculatedCostPerDefaultUnit(
+        purchase: PurchaseEntry,
+        item: ConsumableItem
+    ) -> Decimal? {
+        guard purchase.calculatedCostPerUnit > 0 else { return nil }
+
+        guard
+            let unitsInDefault = convertedQuantityToDefaultUnit(
+                quantity: 1,
+                from: purchase.unit,
+                item: item
+            ),
+            unitsInDefault > 0
+        else {
+            return nil
+        }
+
+        return purchase.calculatedCostPerUnit / decimal(from: unitsInDefault)
+    }
+
+    private func hasRewardBonusAlready(
+        rewardEntries: [RewardEntry],
+        itemId: String,
+        type: RewardType,
+        date: Date
+    ) -> Bool {
+        guard let periodInterval = rewardPeriodInterval(for: type, date: date) else { return false }
+        let periodKey = rewardPeriodKey(for: type, date: date)
+
+        return rewardEntries.contains { entry in
+            guard entry.type == type else { return false }
+
+            // item gebundene rewards nur bei gleichem item matchen
+            if let rewardItemId = entry.consumableItemId, rewardItemId != itemId {
+                return false
+            }
+
+            // neue einträge dedupe über key
+            if let periodKey, let storedKey = entry.periodKey {
+                return periodKey == storedKey
+            }
+
+            // fallback für alte docs ohne key
+            return periodInterval.contains(entry.createdAt)
+        }
+    }
+
+    private func rewardPeriodInterval(for type: RewardType, date: Date) -> DateInterval? {
+        switch type {
+        case .consumeFreeDay:
+            return dayInterval(for: date)
+        case .consumeFreeWeek:
+            return weekInterval(for: date)
+        case .consumeFreeMonth:
+            return monthInterval(for: date)
+        default:
+            return nil
         }
     }
 
@@ -434,6 +593,15 @@ struct CalculationService {
     private func monthInterval(for date: Date) -> DateInterval {
         let interval = calendar.dateInterval(of: .month, for: date)
         return interval ?? dayInterval(for: date)
+    }
+
+    private func daysInMonth(for date: Date) -> Int {
+        let range = calendar.range(of: .day, in: .month, for: date)
+        return range?.count ?? 30
+    }
+
+    private func isZero(_ value: Double) -> Bool {
+        abs(value) <= epsilon
     }
 
     private func decimal(from value: Double) -> Decimal {

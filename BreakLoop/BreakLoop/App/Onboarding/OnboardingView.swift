@@ -19,48 +19,67 @@ import SwiftUI
 
 struct OnboardingDraft: Sendable {
     var displayName: String
+    var preferredCurrencyCode: String
     var baselineDailyConsume: Double
     var baselineCostPerConsume: Decimal?
     var firstConsumableName: String
     var firstConsumableCategory: ConsumableCategory
     var firstConsumableUnit: ConsumeUnit
+    var firstConsumableUnitsPerPurchase: Double?
     var addFirstConsumable: Bool
 }
 
 
 // MARK: ┏━ [01 APP FLOW] OnboardingView
-// MARK: ┗━ gateway zuerst, optional setup slides danach, auth auswahl nativ am ende
+// MARK: ┗━ premium guided onboarding mit einem klaren fokus pro screen
 
 struct OnboardingView: View {
-    private enum BaselineUnitOption: String, CaseIterable, Identifiable {
+    private let contentTopSpacing: CGFloat = 20
+    private let cardRadius: CGFloat = 16
+    private let sectionSpacing: CGFloat = 18
+    private let bottomBarReservedHeight: CGFloat = 170
+
+    private enum Step: Int, CaseIterable {
+        case welcome
+        case consumable
+        case dailyAmount
+        case unitPrice
+        case quantityPerPurchase
+        case summary
+    }
+
+    private enum UnitOption: String, CaseIterable, Identifiable {
         case piece
+        case gram
+        case milliliter
+        case cup
+        case dose
         case pack
-        case grams
-        case milliliters
-        case liters
-        case custom
+        case other
 
         var id: String { rawValue }
 
         var label: String {
             switch self {
             case .piece: return "piece"
+            case .gram: return "g"
+            case .milliliter: return "ml"
+            case .cup: return "cup"
+            case .dose: return "dose"
             case .pack: return "pack"
-            case .grams: return "g"
-            case .milliliters: return "ml"
-            case .liters: return "L"
-            case .custom: return "custom"
+            case .other: return "other"
             }
         }
 
         var consumeUnit: ConsumeUnit {
             switch self {
             case .piece: return .piece
+            case .gram: return .gram
+            case .milliliter: return .milliliter
+            case .cup: return .cup
+            case .dose: return .dose
             case .pack: return .pack
-            case .grams: return .gram
-            case .milliliters: return .milliliter
-            case .liters: return .other
-            case .custom: return .other
+            case .other: return .other
             }
         }
     }
@@ -75,27 +94,442 @@ struct OnboardingView: View {
         var id: String { rawValue }
     }
 
+    private enum TrackType: String, CaseIterable, Identifiable {
+        case cigarettes
+        case vape
+        case weed
+        case alcohol
+        case caffeine
+        case custom
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .cigarettes: return "Cigarettes"
+            case .vape: return "Vape"
+            case .weed: return "Weed"
+            case .alcohol: return "Alcohol"
+            case .caffeine: return "Caffeine"
+            case .custom: return "Custom"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .cigarettes: return "flame"
+            case .vape: return "drop.fill"
+            case .weed: return "leaf.fill"
+            case .alcohol: return "wineglass.fill"
+            case .caffeine: return "cup.and.saucer.fill"
+            case .custom: return "square.and.pencil"
+            }
+        }
+
+        var category: ConsumableCategory {
+            switch self {
+            case .cigarettes, .vape:
+                return .nicotine
+            case .weed:
+                return .cannabis
+            case .alcohol:
+                return .alcohol
+            case .caffeine:
+                return .caffeine
+            case .custom:
+                return .custom
+            }
+        }
+
+        var unit: UnitOption {
+            switch self {
+            case .cigarettes: return .piece
+            case .vape: return .dose
+            case .weed: return .gram
+            case .alcohol: return .cup
+            case .caffeine: return .cup
+            case .custom: return .other
+            }
+        }
+
+        var usageExample: String {
+            switch self {
+            case .cigarettes: return "cigarettes/day"
+            case .vape: return "sessions/day"
+            case .weed: return "g/day"
+            case .alcohol: return "drinks/day"
+            case .caffeine: return "cups/day"
+            case .custom: return "units/day"
+            }
+        }
+
+        var priceExample: String {
+            switch self {
+            case .cigarettes: return "one pack"
+            case .vape: return "one pod or bottle"
+            case .weed: return "1g"
+            case .alcohol: return "one bottle or can"
+            case .caffeine: return "one cup"
+            case .custom: return "one unit"
+            }
+        }
+
+        var quantityPresets: [Double] {
+            switch self {
+            case .cigarettes: return [20, 25, 30]
+            case .vape: return [1, 2, 4]
+            case .weed: return [1, 3.5, 5, 10]
+            case .alcohol: return [1, 6, 12]
+            case .caffeine: return [1, 2, 3]
+            case .custom: return [1, 5, 10, 20]
+            }
+        }
+
+        var dailyPresets: [Double] {
+            switch self {
+            case .cigarettes: return [3, 5, 8, 10, 12, 15, 20]
+            case .vape: return [3, 5, 8, 10, 15, 20, 30]
+            case .weed: return [1, 2, 3, 4, 5]
+            case .alcohol: return [1, 2, 3, 4, 5, 6]
+            case .caffeine: return [1, 2, 3, 4, 5, 6]
+            case .custom: return [1, 2, 3, 5, 8, 10]
+            }
+        }
+
+        var weeklyPresets: [Double] {
+            switch self {
+            case .cigarettes:
+                return [21, 35, 56, 70, 105, 140]
+            case .vape:
+                return [21, 35, 56, 70, 105, 140]
+            case .weed:
+                return [3.5, 7, 14, 21, 28]
+            case .alcohol:
+                return [7, 14, 21, 28, 35, 42]
+            case .caffeine:
+                return [7, 14, 21, 28, 35, 42]
+            case .custom:
+                return [7, 14, 21, 35, 56, 70]
+            }
+        }
+
+        var defaultDailyAmount: Double {
+            switch self {
+            case .weed:
+                return 1
+            default:
+                return dailyPresets.first ?? 1
+            }
+        }
+    }
+
+    private enum PricingMode {
+        case unit
+        case package
+    }
+
+    private enum UsageFrequency: String, CaseIterable, Identifiable {
+        case daily
+        case weekly
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .daily: return "Daily"
+            case .weekly: return "Weekly"
+            }
+        }
+
+        var shortLabel: String {
+            switch self {
+            case .daily: return "day"
+            case .weekly: return "week"
+            }
+        }
+    }
+
+    private enum MassDisplayUnit: String, CaseIterable, Identifiable {
+        case gram = "g"
+        case milligram = "mg"
+
+        var id: String { rawValue }
+    }
+
+    private enum FieldFocus: Hashable {
+        case customName
+        case customUnitName
+        case unitPrice
+        case quantityCustom
+    }
+
     let initialProfile: UserProfile?
     let onChooseAuth: (AuthEntryIntent, OnboardingDraft?) -> Void
 
-    // index für setup slides
-    @State private var pageIndex: Int = 0
+    @State private var step: Step = .welcome
 
-    // native auth chooser am ende vom setup
-    @State private var showsAuthChoiceDialog: Bool = false
+    @State private var selectedType: TrackType?
+    @State private var customConsumableName: String = ""
+    @State private var customUnit: UnitOption = .other
+    @State private var customUnitName: String = ""
+    @State private var customPricingMode: PricingMode = .unit
 
-    // form state
     @State private var displayName: String = ""
-    @State private var firstConsumableCategory: ConsumableCategory = .custom
-    @State private var firstConsumableName: String = ""
-    @State private var consumableUnit: BaselineUnitOption = .piece
-    @State private var consumableCustomUnitName: String = ""
-    @State private var baselineDailyAmountText: String = ""
-    @State private var purchasePriceText: String = ""
-    @State private var purchaseAmountText: String = ""
-    @State private var selectedCurrencyCode: String = Locale.current.currency?.identifier ?? "EUR"
+    @State private var dailyAmount: Double = 10
+    @State private var usageFrequency: UsageFrequency = .daily
+    @State private var massDisplayUnit: MassDisplayUnit = .gram
 
-    private let totalPages = 4
+    @State private var selectedCurrencyCode: String = Locale.current.currency?.identifier ?? "EUR"
+    @State private var unitPriceText: String = ""
+
+    @State private var quantityInPurchase: Double = 20
+    @State private var quantityCustomText: String = ""
+    @State private var scrollTarget: String?
+    @FocusState private var focusedField: FieldFocus?
+
+    private var progressIndex: Int {
+        visibleSteps.firstIndex(of: step) ?? 0
+    }
+
+    private var totalSteps: Int {
+        visibleSteps.count
+    }
+
+    private var effectiveType: TrackType {
+        selectedType ?? .cigarettes
+    }
+
+    private var effectiveUnitOption: UnitOption {
+        if effectiveType == .custom {
+            return customUnit
+        }
+        return effectiveType.unit
+    }
+
+    private var effectiveConsumableName: String {
+        if effectiveType == .custom {
+            let trimmed = customConsumableName.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "Custom" : trimmed
+        }
+        return effectiveType.title
+    }
+
+    private var dailyAmountValue: Double {
+        return max(0, dailyAmount)
+    }
+
+    private var isMassInputToggleVisible: Bool {
+        effectiveUnitOption == .gram
+    }
+
+    private var effectiveAmountUnitLabel: String {
+        if isMassInputToggleVisible {
+            return massDisplayUnit.rawValue
+        }
+
+        if effectiveType == .custom, customUnit == .other {
+            let trimmed = customUnitName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed.lowercased()
+            }
+        }
+
+        return effectiveUnitOption.label
+    }
+
+    private var displayedUsageAmount: Double {
+        var value = dailyAmountValue
+        if usageFrequency == .weekly {
+            value *= 7
+        }
+        if isMassInputToggleVisible, massDisplayUnit == .milligram {
+            value *= 1000
+        }
+        return value
+    }
+
+    private var displayedUsagePresets: [Double] {
+        let sourcePresets = usageFrequency == .weekly ? effectiveType.weeklyPresets : effectiveType.dailyPresets
+
+        return sourcePresets.map { preset in
+            var value = preset
+            if isMassInputToggleVisible, massDisplayUnit == .milligram {
+                value *= 1000
+            }
+            return value
+        }
+    }
+
+    private var displayAdjustStep: Double {
+        switch effectiveType {
+        case .weed:
+            return isMassInputToggleVisible && massDisplayUnit == .milligram ? 100 : 1
+        case .custom:
+            switch effectiveUnitOption {
+            case .gram:
+                return isMassInputToggleVisible && massDisplayUnit == .milligram ? 100 : 1
+            case .milliliter:
+                return 10
+            default:
+                return 1
+            }
+        default:
+            return 1
+        }
+    }
+
+    private var monthlyUsageEstimate: Double {
+        dailyAmountValue * 30
+    }
+
+    private var quantityValue: Double {
+        if let custom = parseDouble(quantityCustomText), custom > 0 {
+            return custom
+        }
+        return max(1, quantityInPurchase)
+    }
+
+    private var unitPriceValue: Decimal? {
+        parseDecimal(unitPriceText)
+    }
+
+    private var pricingMode: PricingMode {
+        switch effectiveType {
+        case .cigarettes, .vape, .alcohol:
+            return .package
+        case .weed, .caffeine:
+            return .unit
+        case .custom:
+            return customPricingMode
+        }
+    }
+
+    private var visibleSteps: [Step] {
+        switch pricingMode {
+        case .unit:
+            return [.welcome, .consumable, .dailyAmount, .unitPrice, .summary]
+        case .package:
+            return Step.allCases
+        }
+    }
+
+    private var priceQuestionTitle: String {
+        switch pricingMode {
+        case .unit:
+            return "What does one \(effectiveUnitOption.label) usually cost?"
+        case .package:
+            return "What does \(effectiveType.priceExample) usually cost?"
+        }
+    }
+
+    private var priceQuestionSubtitle: String {
+        switch pricingMode {
+        case .unit:
+            return "Enter direct price per \(effectiveUnitOption.label)."
+        case .package:
+            return "Use package price. Next step maps content per package."
+        }
+    }
+
+    private var quantityQuestionTitle: String {
+        "How many units are in one purchase?"
+    }
+
+    private var quantityQuestionSubtitle: String {
+        switch effectiveType {
+        case .cigarettes:
+            return "Used to calculate cost per cigarette."
+        case .vape:
+            return "Used to calculate cost per session."
+        case .alcohol:
+            return "Used to calculate cost per drink."
+        default:
+            return "Needed to calculate cost per \(effectiveUnitOption.label)."
+        }
+    }
+
+    private var costPerUnit: Decimal? {
+        guard let price = unitPriceValue else { return nil }
+        guard price > 0 else { return nil }
+
+        switch pricingMode {
+        case .unit:
+            return price
+        case .package:
+            let amountDecimal = Decimal(quantityValue)
+            guard amountDecimal > 0 else { return nil }
+            return price / amountDecimal
+        }
+    }
+
+    private var monthlySpend: Decimal? {
+        guard let unitCost = costPerUnit else { return nil }
+        let monthlyUnits = Decimal(monthlyUsageEstimate)
+        guard monthlyUnits > 0 else { return nil }
+        return unitCost * monthlyUnits
+    }
+
+    private var monthlySavingsAt25: Decimal? {
+        guard let spend = monthlySpend else { return nil }
+        return spend * Decimal(string: "0.25")!
+    }
+
+    private var monthlySpendPreviewOnPriceStep: Decimal? {
+        switch pricingMode {
+        case .unit:
+            return monthlySpend
+        case .package:
+            return nil
+        }
+    }
+
+    private var isCurrentStepValid: Bool {
+        switch step {
+        case .welcome:
+            return true
+        case .consumable:
+            if selectedType == nil { return false }
+            if effectiveType == .custom {
+                let hasName = !customConsumableName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if customUnit == .other {
+                    return hasName && !customUnitName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                }
+                return hasName
+            }
+            return true
+        case .dailyAmount:
+            return dailyAmountValue > 0
+        case .unitPrice:
+            if let price = unitPriceValue {
+                return price > 0
+            }
+            return false
+        case .quantityPerPurchase:
+            if pricingMode == .unit { return true }
+            return quantityValue > 0
+        case .summary:
+            return true
+        }
+    }
+
+    private func convertDisplayedAmountToDaily(_ value: Double) -> Double {
+        var daily = max(0, value)
+
+        if isMassInputToggleVisible, massDisplayUnit == .milligram {
+            daily /= 1000
+        }
+
+        if usageFrequency == .weekly {
+            daily /= 7
+        }
+
+        return daily
+    }
+
+    private var customConfigAnchorId: String { "custom-config-anchor" }
+    private var unitPriceAnchorId: String { "unit-price-anchor" }
+    private var quantityAnchorId: String { "quantity-anchor" }
+    private var customUnitAnchorId: String { "custom-unit-anchor" }
 
     var body: some View {
         ZStack {
@@ -113,530 +547,767 @@ struct OnboardingView: View {
                 .blur(radius: 52)
                 .offset(x: -140, y: -140)
 
-            setupContent
+            VStack(spacing: 16) {
+                header
+
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        Group {
+                            switch step {
+                            case .welcome:
+                                welcomeStep
+                            case .consumable:
+                                consumableStep
+                            case .dailyAmount:
+                                dailyStep
+                            case .unitPrice:
+                                priceStep
+                            case .quantityPerPurchase:
+                                if pricingMode == .package {
+                                    quantityStep
+                                } else {
+                                    summaryStep
+                                }
+                            case .summary:
+                                summaryStep
+                            }
+                        }
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+                        .animation(.spring(response: 0.35, dampingFraction: 0.88), value: step)
+                        .padding(.top, contentTopSpacing)
+                        .padding(.bottom, bottomBarReservedHeight)
+                    }
+                    .onChange(of: scrollTarget) { _, target in
+                        guard let target else { return }
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(target, anchor: .center)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
         }
         .onAppear {
             bootstrapInitialValues()
         }
-        .confirmationDialog("How do you want to continue?", isPresented: $showsAuthChoiceDialog, titleVisibility: .visible) {
-            Button("Sign In") {
-                onChooseAuth(.signIn, makeDraft())
+        .onChange(of: focusedField) { _, field in
+            switch field {
+            case .customName:
+                scrollTarget = customConfigAnchorId
+            case .customUnitName:
+                scrollTarget = customUnitAnchorId
+            case .unitPrice:
+                scrollTarget = unitPriceAnchorId
+            case .quantityCustom:
+                scrollTarget = quantityAnchorId
+            case nil:
+                break
             }
-            Button("Create Account") {
-                onChooseAuth(.register, makeDraft())
-            }
-            Button("Continue as Guest") {
-                onChooseAuth(.guest, makeDraft())
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Choose login method. Your setup data will be kept.")
+        }
+        .safeAreaInset(edge: .bottom) {
+            bottomBar
+                .padding(.horizontal, 20)
         }
     }
 
-    private var setupContent: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                HStack {
+    private var header: some View {
+        ZStack {
+            HStack {
+                Button {
+                    goBack()
+                } label: {
+                    Label("Back", systemImage: "chevron.left")
+                        .font(.footnote.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color("TextSecondary"))
+                .background(
+                    Capsule()
+                        .fill(Color("Surface"))
+                        .overlay(
+                            Capsule()
+                                .stroke(Color("Border"), lineWidth: 1)
+                        )
+                )
+                .opacity(step == .welcome ? 0 : 1)
+                .disabled(step == .welcome)
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    ForEach(0..<totalSteps, id: \.self) { index in
+                        Capsule()
+                            .fill(index <= progressIndex ? Color("BrandAccentStrong") : Color("Border"))
+                            .frame(width: index == progressIndex ? 20 : 8, height: 8)
+                    }
+                }
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "leaf.fill")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color("BrandAccentStrong"))
+
+                Text("BreakLoop")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color("TextPrimary"))
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding(.top, 10)
+    }
+
+    private var welcomeStep: some View {
+        VStack(alignment: .leading, spacing: sectionSpacing) {
+            stepTitle(
+                "Quick start",
+                subtitle: "Track habits, money, progress, and rewards in one flow."
+            )
+
+            Text("This takes less than a minute.")
+                .font(.title3.weight(.medium))
+                .foregroundStyle(Color("TextSecondary"))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Label("You can edit everything later", systemImage: "checkmark.circle.fill")
+                Label("Your first setup powers money insights", systemImage: "chart.line.uptrend.xyaxis")
+            }
+            .font(.footnote)
+            .foregroundStyle(Color("TextSecondary"))
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(Color("Surface").opacity(0.68))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                            .stroke(Color("Border").opacity(0.22), lineWidth: 1)
+                    )
+            )
+
+        }
+    }
+
+    private var consumableStep: some View {
+        VStack(alignment: .leading, spacing: sectionSpacing) {
+            stepTitle(
+                "What do you want to track first?",
+                subtitle: "Pick one. You can add more later."
+            )
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(TrackType.allCases) { type in
                     Button {
-                        if pageIndex > 0 { pageIndex -= 1 }
+                        selectedType = type
+                        if type != .custom {
+                            customConsumableName = ""
+                            customUnitName = ""
+                            focusedField = nil
+                        }
+                        if type == .custom {
+                            customPricingMode = .unit
+                        }
+                        dailyAmount = type.defaultDailyAmount
+                        if let firstPreset = type.quantityPresets.first {
+                            quantityInPurchase = firstPreset
+                            quantityCustomText = ""
+                        }
                     } label: {
-                        Label("Back", systemImage: "chevron.left")
-                            .font(.footnote.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                        VStack(spacing: 8) {
+                            Image(systemName: type.icon)
+                                .font(.title2.weight(.semibold))
+                            Text(type.title)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .foregroundStyle(selectedType == type ? Color("TextOnAccent") : Color("TextPrimary"))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 94)
+                        .background(
+                            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                                .fill(selectedType == type ? Color("ButtonPrimaryBackground") : Color("Surface").opacity(0.72))
+                        )
                     }
                     .buttonStyle(.plain)
+                }
+            }
+
+            if selectedType == .custom {
+                VStack(alignment: .leading, spacing: 14) {
+                    inputRow(label: "What should we call it?") {
+                        TextField("e.g. Nicotine Pouch", text: $customConsumableName)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled(false)
+                            .foregroundStyle(Color("TextPrimary"))
+                            .focused($focusedField, equals: .customName)
+                    }
+                    .id(customConfigAnchorId)
+
+                    if !customConsumableName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Tracking: \(customConsumableName.trimmingCharacters(in: .whitespacesAndNewlines))")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(Color("TextSecondary"))
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Choose unit")
+                            .font(.subheadline)
+                            .foregroundStyle(Color("TextSecondary"))
+
+                        pickerRow(label: "Unit") {
+                            Picker("Unit", selection: $customUnit) {
+                                ForEach(UnitOption.allCases) { unit in
+                                    Text(unit.label).tag(unit)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(Color("TextPrimary"))
+                        }
+                    }
+
+                    if customUnit == .other {
+                        inputRow(label: "Custom unit name") {
+                            TextField("e.g. tab, puff, sip", text: $customUnitName)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .foregroundStyle(Color("TextPrimary"))
+                                .focused($focusedField, equals: .customUnitName)
+                        }
+                        .id(customUnitAnchorId)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Pricing mode")
+                            .font(.subheadline)
+                            .foregroundStyle(Color("TextSecondary"))
+
+                        Picker("Pricing", selection: $customPricingMode) {
+                            Text("Per unit").tag(PricingMode.unit)
+                            Text("Per purchase").tag(PricingMode.package)
+                        }
+                        .pickerStyle(.segmented)
+                        .tint(Color("ButtonPrimaryBackground"))
+
+                        Text("Per unit = €10 for 1g\nPer purchase = €10 for bag/pack")
+                            .font(.footnote)
+                            .foregroundStyle(Color("TextSecondary"))
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+    }
+
+    private var dailyStep: some View {
+        VStack(alignment: .leading, spacing: sectionSpacing) {
+            stepTitle(
+                "How much do you usually use each day?",
+                subtitle: "Switch day/week and set your typical amount."
+            )
+
+            HStack(spacing: 10) {
+                Picker("Frequency", selection: $usageFrequency) {
+                    ForEach(UsageFrequency.allCases) { frequency in
+                        Text(frequency.label).tag(frequency)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .tint(Color("ButtonPrimaryBackground"))
+
+                if isMassInputToggleVisible {
+                    Picker("Mass unit", selection: $massDisplayUnit) {
+                        ForEach(MassDisplayUnit.allCases) { unit in
+                            Text(unit.rawValue.uppercased()).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .tint(Color("ButtonPrimaryBackground"))
+                }
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(displayedUsagePresets, id: \.self) { value in
+                        chipButton(
+                            label: prettyNumber(value),
+                            selected: abs(displayedUsageAmount - value) < 0.0001
+                        ) {
+                            dailyAmount = roundedDailyAmount(convertDisplayedAmountToDaily(value))
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+
+            VStack(spacing: 12) {
+                Text("Typical usage")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color("TextSecondary"))
-                    .background(
-                        Capsule()
-                            .fill(Color("Surface"))
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color("Border"), lineWidth: 1)
-                            )
-                    )
-                    .opacity(pageIndex == 0 ? 0 : 1)
-                    .disabled(pageIndex == 0)
+
+                Text("\(prettyNumber(displayedUsageAmount)) \(effectiveAmountUnitLabel)/\(usageFrequency.shortLabel)")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color("TextPrimary"))
+                    .minimumScaleFactor(0.8)
+                    .lineLimit(1)
+
+                HStack(spacing: 14) {
+                    adjustButton(symbol: "minus") {
+                        let updated = max(0, displayedUsageAmount - displayAdjustStep)
+                        dailyAmount = roundedDailyAmount(convertDisplayedAmountToDaily(updated))
+                    }
+
+                    Text("Adjust amount")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Color("TextSecondary"))
+
+                    adjustButton(symbol: "plus") {
+                        let updated = min(4000, displayedUsageAmount + displayAdjustStep)
+                        dailyAmount = roundedDailyAmount(convertDisplayedAmountToDaily(updated))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(Color("Surface").opacity(0.78))
+            )
+
+            Text("At \(prettyNumber(dailyAmountValue))/day = about \(prettyNumber(monthlyUsageEstimate))/month")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color("TextSecondary"))
+                .padding(.horizontal, 2)
+        }
+    }
+
+    private var priceStep: some View {
+        VStack(alignment: .leading, spacing: sectionSpacing) {
+            stepTitle(
+                priceQuestionTitle,
+                subtitle: priceQuestionSubtitle
+            )
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Text("Currency")
+                        .font(.subheadline)
+                        .foregroundStyle(Color("TextSecondary"))
 
                     Spacer()
 
-                    HStack(spacing: 6) {
-                        ForEach(0..<totalPages, id: \.self) { index in
+                    Menu {
+                        ForEach(CurrencyOption.allCases) { currency in
+                            Button(currency.rawValue) {
+                                selectedCurrencyCode = currency.rawValue
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(selectedCurrencyCode)
+                                .font(.subheadline.weight(.semibold))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2.weight(.bold))
+                        }
+                        .foregroundStyle(Color("TextPrimary"))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(
                             Capsule()
-                                .fill(index <= pageIndex ? Color("BrandAccentStrong") : Color("Border"))
-                                .frame(width: index == pageIndex ? 20 : 8, height: 8)
+                                .fill(Color("SurfaceElevated"))
+                        )
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Price")
+                        .font(.subheadline)
+                        .foregroundStyle(Color("TextSecondary"))
+
+                    HStack(spacing: 6) {
+                        Text(currencySymbol)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(Color("TextSecondary"))
+
+                        TextField("0", text: $unitPriceText)
+                            .keyboardType(.decimalPad)
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(Color("TextPrimary"))
+                            .focused($focusedField, equals: .unitPrice)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .background(Color("SurfaceElevated").opacity(0.88))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .id(unitPriceAnchorId)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(Color("Surface").opacity(0.78))
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("At your current pace")
+                    .font(.subheadline)
+                    .foregroundStyle(Color("TextSecondary"))
+
+                if let preview = monthlySpendPreviewOnPriceStep {
+                    Text("\(formatCurrency(preview)) / month")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color("BrandAccentStrong"))
+                } else {
+                    Text("Complete next step for monthly estimate")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Color("TextSecondary"))
+                }
+            }
+        }
+    }
+
+    private var quantityStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            stepTitle(
+                quantityQuestionTitle,
+                subtitle: quantityQuestionSubtitle
+            )
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(effectiveType.quantityPresets, id: \.self) { value in
+                        chipButton(
+                            label: prettyNumber(value),
+                            selected: quantityInPurchase == value && quantityCustomText.isEmpty
+                        ) {
+                            quantityInPurchase = value
+                            quantityCustomText = ""
                         }
                     }
                 }
+            }
+
+            Stepper(value: $quantityInPurchase, in: 1...1000, step: 1) {
+                Text("\(prettyNumber(quantityInPurchase)) \(effectiveUnitOption.label) per purchase")
+                    .font(.headline)
+                    .foregroundStyle(Color("TextPrimary"))
+            }
+
+            inputRow(label: "Enter custom amount") {
+                TextField("Enter amount", text: $quantityCustomText)
+                    .keyboardType(.decimalPad)
+                    .foregroundStyle(Color("TextPrimary"))
+                    .focused($focusedField, equals: .quantityCustom)
+            }
+            .id(quantityAnchorId)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Cost per \(effectiveUnitOption.label)")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color("TextSecondary"))
+
+                Text(costPerUnit.map(formatCurrency) ?? "—")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color("TextPrimary"))
+
+                Text("Daily baseline")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color("TextSecondary"))
+
+                Text(monthlySpend.map { formatCurrency($0 / 30) } ?? "—")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color("BrandAccentStrong"))
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(Color("Surface").opacity(0.72))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                            .stroke(Color("Border").opacity(0.22), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    private var summaryStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            stepTitle(
+                "Ready to break the loop?",
+                subtitle: "Here is your starting point."
+            )
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("You currently average")
+                    .font(.footnote)
+                    .foregroundStyle(Color("TextSecondary"))
+
+                Text("\(prettyNumber(dailyAmountValue)) \(effectiveUnitOption.label)/day")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Color("TextPrimary"))
+
+                Text("Estimated monthly spend")
+                    .font(.footnote)
+                    .foregroundStyle(Color("TextSecondary"))
+
+                Text(monthlySpend.map(formatCurrency) ?? "—")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Color("TextPrimary"))
+
+                Text("If you reduce by 25%")
+                    .font(.footnote)
+                    .foregroundStyle(Color("TextSecondary"))
+
+                Text("Save \(monthlySavingsAt25.map(formatCurrency) ?? "—")/month")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Color("BrandAccentStrong"))
 
                 HStack(spacing: 6) {
-                    Image(systemName: "leaf.fill")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color("BrandAccentStrong"))
-
-                    Text("BreakLoop")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color("TextPrimary"))
+                    Image(systemName: "sparkles")
+                    Text("Consumption-free day reward: +50 XP")
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Color("TextSecondary"))
             }
-            .padding(.top, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(Color("Surface").opacity(0.78))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                            .stroke(Color("Border").opacity(0.22), lineWidth: 1)
+                    )
+            )
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-                    if pageIndex == 0 {
-                        HStack(spacing: 8) {
-                            Image(systemName: "sparkles")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(Color("BrandAccentStrong"))
+        }
+    }
 
-                            Text("Quick start")
-                                .font(.largeTitle.weight(.bold))
-                                .foregroundStyle(Color("TextPrimary"))
-                        }
-
-                        Text("Track consume habits")
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(Color("TextPrimary"))
-
-                        Text("See spend, progress, and rewards in one flow")
-                            .font(.body)
-                            .foregroundStyle(Color("TextSecondary"))
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Text("Use Sign In below or continue setup to add first data")
-                            .font(.body)
-                            .foregroundStyle(Color("TextSecondary"))
-                            .fixedSize(horizontal: false, vertical: true)
-                    } else if pageIndex == 1 {
-                        consumableSlide
-                    } else if pageIndex == 2 {
-                        usageSlide
-                    } else if pageIndex == 3 {
-                        costSlide
-                    } else {
-                        EmptyView()
+    private var bottomBar: some View {
+        if step == .summary {
+            return AnyView(
+                VStack(spacing: 10) {
+                    Button {
+                        onChooseAuth(.register, makeDraft())
+                    } label: {
+                        Label("Create Account", systemImage: "person.crop.circle.badge.plus")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
                     }
-                }
-                .padding(.top, 12)
-            }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color("ButtonPrimaryBackground"))
+                    .clipShape(Capsule())
 
+                    Button {
+                        onChooseAuth(.guest, makeDraft())
+                    } label: {
+                        Label("Continue as Guest", systemImage: "person.crop.circle.badge.questionmark")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color("ButtonSecondaryBackground"))
+                    .clipShape(Capsule())
+                }
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Color("Background").opacity(0),
+                            Color("Background").opacity(0.94),
+                            Color("Background")
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+                )
+            )
+        }
+
+        let isWelcomeStep = step == .welcome
+
+        return AnyView(
             VStack(spacing: 10) {
                 Button {
-                    if pageIndex < totalPages - 1 {
-                        pageIndex += 1
-                    } else {
-                        showsAuthChoiceDialog = true
-                    }
+                    handlePrimaryAction()
                 } label: {
-                    Label(pageIndex == totalPages - 1 ? "Continue" : "Next", systemImage: "arrow.right.circle.fill")
+                    Label(primaryCTA, systemImage: step == .summary ? "checkmark.circle.fill" : "arrow.right.circle.fill")
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color("ButtonPrimaryBackground"))
+                .opacity(isCurrentStepValid ? 1 : 0.62)
                 .clipShape(Capsule())
-                .overlay(
+                .background(
                     Capsule()
-                        .stroke(.white.opacity(0.9), lineWidth: 1)
+                        .fill(.ultraThinMaterial)
+                        .opacity(isCurrentStepValid ? 0 : 1)
                 )
-                .disabled(!isCurrentSlideValid)
+                .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
+                .disabled(!isCurrentStepValid)
 
                 Button {
                     onChooseAuth(.signIn, nil)
                 } label: {
                     Label("Sign In", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(isWelcomeStep ? .headline : .subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
+                        .padding(.vertical, isWelcomeStep ? 13 : 9)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color("ButtonPrimaryBackground"))
+                .tint(isWelcomeStep ? Color("ButtonPrimaryBackground") : Color("ButtonSecondaryBackground"))
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isWelcomeStep
+                            ? .white.opacity(0.9)
+                            : Color("BorderStrong").opacity(0.7),
+                            lineWidth: 1
+                        )
+                )
             }
-            .padding(.bottom, 18)
-        }
-        .padding(.horizontal, 20)
-        .overlay(alignment: .bottom) {
-            if pageIndex == 0 {
-                Label("Developed by @arj4ng", systemImage: "person.crop.circle.badge.checkmark")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color("TextSecondary"))
-                    .padding(.bottom, -18)
-                    .ignoresSafeArea(edges: .bottom)
-                    .allowsHitTesting(false)
-            }
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color("Background").opacity(0),
+                        Color("Background").opacity(0.94),
+                        Color("Background")
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            )
+        )
+    }
+
+    private var primaryCTA: String {
+        switch step {
+        case .welcome:
+            return "Start setup"
+        default:
+            return "Next"
         }
     }
 
     @ViewBuilder
-    private func pageTitle(title: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func stepTitle(_ title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.largeTitle.weight(.bold))
+                .lineSpacing(1.5)
                 .foregroundStyle(Color("TextPrimary"))
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(subtitle)
-                .font(.title3)
+                .font(.title3.weight(.medium))
                 .foregroundStyle(Color("TextSecondary"))
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
-    private func inputField(title: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
-        TextField(title, text: text)
-            .keyboardType(keyboard)
-            .textInputAutocapitalization(keyboard == .default ? .words : .never)
-            .autocorrectionDisabled(keyboard != .default)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .foregroundStyle(Color("TextPrimary"))
-            .background(Color("SurfaceElevated"))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color("Border"), lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    @ViewBuilder
-    private var consumableSlide: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            pageTitle(
-                title: "First consumable",
-                subtitle: "Choose what you want to track first"
-            )
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Consumable name")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(Color("TextPrimary"))
-
-                inputFieldBare(title: "Name (e.g. Flower, Vape Liquid)", text: $firstConsumableName, keyboard: .default)
-
-                categoryPicker
-
-                unitPicker(title: "Default unit", selection: $consumableUnit)
-
-                if consumableUnit == .custom {
-                    inputFieldBare(title: "Custom unit name", text: $consumableCustomUnitName, keyboard: .default)
-                }
-
-                if let error = consumableValidationError {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(Color("Danger"))
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color("Surface").opacity(0.72))
-            )
-
-        }
-    }
-
-    @ViewBuilder
-    private var usageSlide: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            pageTitle(
-                title: "Usage baseline",
-                subtitle: "How much do you usually consume per day?"
-            )
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Typical amount per day")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(Color("TextPrimary"))
-
-                inputFieldBare(title: "Amount per day", text: $baselineDailyAmountText, keyboard: .decimalPad)
-
-                Text("Per day in \(consumableUnitLabelForCopy)")
-                    .font(.footnote)
-                    .foregroundStyle(Color("TextSecondary"))
-
-                if let error = usageValidationError {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(Color("Danger"))
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color("Surface").opacity(0.72))
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var costSlide: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            pageTitle(
-                title: "Cost baseline",
-                subtitle: "Set package cost and package content for baseline math"
-            )
-
-            VStack(alignment: .leading, spacing: 10) {
-                currencyPicker
-
-                Text("Package price")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(Color("TextPrimary"))
-
-                currencyInputField(title: "Price", text: $purchasePriceText)
-
-                Text(purchaseAmountLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(Color("TextSecondary"))
-
-                inputFieldBare(title: purchaseAmountPlaceholder, text: $purchaseAmountText, keyboard: .decimalPad)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Estimated cost per \(consumableUnitLabelForCopy)")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color("TextSecondary"))
-
-                    Text(estimatedCostPerConsumeDisplay)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Color("TextPrimary"))
-
-                    Text("Estimated daily cost baseline")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Color("TextSecondary"))
-
-                    Text(estimatedDailyCostDisplay)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color("BrandAccentStrong"))
-                }
-                .padding(.top, 2)
-
-                if let error = costValidationError {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(Color("Danger"))
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color("Surface").opacity(0.72))
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var categoryPicker: some View {
-        HStack(spacing: 8) {
-            Text("Category")
+    private func inputRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
                 .font(.subheadline)
                 .foregroundStyle(Color("TextSecondary"))
 
-            Spacer()
-
-            Picker("Category", selection: $firstConsumableCategory) {
-                ForEach(ConsumableCategory.allCases, id: \.self) { category in
-                    Text(category.rawValue.capitalized).tag(category)
-                }
-            }
-            .pickerStyle(.menu)
-            .tint(Color("TextPrimary"))
+            content()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
+                .background(Color("Surface").opacity(0.8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color("Border").opacity(0.2), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
     @ViewBuilder
-    private var currencyPicker: some View {
+    private func pickerRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 8) {
-            Text("Currency")
+            Text(label)
                 .font(.subheadline)
                 .foregroundStyle(Color("TextSecondary"))
+                .lineLimit(1)
 
             Spacer()
 
-            Picker("Currency", selection: $selectedCurrencyCode) {
-                ForEach(CurrencyOption.allCases) { option in
-                    Text(option.rawValue).tag(option.rawValue)
-                }
-            }
-            .pickerStyle(.menu)
-            .tint(Color("TextPrimary"))
+            content()
+                .frame(minHeight: 24, alignment: .center)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(Color("Surface").opacity(0.8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color("Border").opacity(0.2), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder
-    private func unitPicker(title: String, selection: Binding<BaselineUnitOption>) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(Color("TextSecondary"))
-
-            Spacer()
-
-            Picker(title, selection: selection) {
-                ForEach(BaselineUnitOption.allCases) { option in
-                    Text(option.label).tag(option)
-                }
-            }
-            .pickerStyle(.menu)
-            .tint(Color("TextPrimary"))
+    private func chipButton(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(selected ? Color("TextOnAccent") : Color("TextPrimary"))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(minHeight: 40)
+                .padding(.horizontal, 12)
+                .background(
+                    Capsule()
+                        .fill(selected ? Color("ButtonPrimaryBackground") : Color("Surface").opacity(0.76))
+                )
         }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
-    private func currencyInputField(title: String, text: Binding<String>) -> some View {
-        HStack(spacing: 8) {
-            Text(currencySymbol)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Color("TextSecondary"))
-
-            TextField(title, text: text)
-                .keyboardType(.decimalPad)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
+    private func adjustButton(symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.body.weight(.bold))
                 .foregroundStyle(Color("TextPrimary"))
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(Color("SurfaceElevated"))
+                        .overlay(
+                            Circle()
+                                .stroke(Color("Border").opacity(0.35), lineWidth: 1)
+                        )
+                )
         }
-        .padding(.horizontal, 2)
-        .padding(.vertical, 10)
+        .buttonStyle(.plain)
     }
 
-    @ViewBuilder
-    private func inputFieldBare(title: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
-        TextField(title, text: text)
-            .keyboardType(keyboard)
-            .textInputAutocapitalization(keyboard == .default ? .words : .never)
-            .autocorrectionDisabled(keyboard != .default)
-            .padding(.horizontal, 2)
-            .padding(.vertical, 10)
-            .foregroundStyle(Color("TextPrimary"))
-            .background(Color.clear)
+    private func goBack() {
+        guard let idx = visibleSteps.firstIndex(of: step), idx > 0 else { return }
+        let previous = visibleSteps[idx - 1]
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+            step = previous
+        }
     }
 
-    private var purchaseAmountLabel: String {
-        "Amount in one package (\(consumableUnitLabelForCopy))"
-    }
-
-    private var purchaseAmountPlaceholder: String {
-        "e.g. 20"
-    }
-
-    private var currencySymbol: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = selectedCurrencyCode
-        formatter.locale = .current
-        return formatter.currencySymbol ?? selectedCurrencyCode
-    }
-
-    private var baselineDailyValue: Double? {
-        parseDouble(baselineDailyAmountText)
-    }
-
-    private var baselinePurchasePriceValue: Decimal? {
-        parseDecimal(purchasePriceText)
-    }
-
-    private var baselinePurchaseQuantityValue: Decimal? {
-        parseDecimal(purchaseAmountText)
-    }
-
-    private var estimatedCostPerConsume: Decimal? {
-        guard let price = baselinePurchasePriceValue, let quantity = baselinePurchaseQuantityValue else { return nil }
-        guard price > 0, quantity > 0 else { return nil }
-        return price / quantity
-    }
-
-    private var estimatedCostPerConsumeDisplay: String {
-        guard let value = estimatedCostPerConsume else { return "—" }
-        return formatCurrency(value)
-    }
-
-    private var estimatedDailyCost: Decimal? {
-        guard let costPerUnit = estimatedCostPerConsume else { return nil }
-        let dailyAmount = Decimal(baselineDailyValue ?? 0)
-        guard dailyAmount > 0 else { return nil }
-        return costPerUnit * dailyAmount
-    }
-
-    private var estimatedDailyCostDisplay: String {
-        guard let value = estimatedDailyCost else { return "—" }
-        return formatCurrency(value)
-    }
-
-    private var consumableUnitLabelForCopy: String {
-        consumableUnit == .custom ? (consumableCustomUnitName.isEmpty ? "custom unit" : consumableCustomUnitName) : consumableUnit.label
-    }
-
-    private var consumableValidationError: String? {
-        guard pageIndex == 1 else { return nil }
-
-        if firstConsumableName.isEmpty && consumableUnit != .custom {
-            return nil
+    private func handlePrimaryAction() {
+        if step == .summary {
+            return
         }
 
-        if firstConsumableName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Consumable name required"
-        }
-
-        if consumableUnit == .custom && consumableCustomUnitName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Custom unit required"
-        }
-
-        return nil
-    }
-
-    private var usageValidationError: String? {
-        guard pageIndex == 2 else { return nil }
-
-        guard !baselineDailyAmountText.isEmpty else { return nil }
-
-        guard let value = baselineDailyValue else { return "Use valid number for amount" }
-        guard value > 0 else { return "Amount must be greater than 0" }
-
-        return nil
-    }
-
-    private var costValidationError: String? {
-        guard pageIndex == 3 else { return nil }
-
-        if purchasePriceText.isEmpty && purchaseAmountText.isEmpty {
-            return nil
-        }
-
-        guard !purchasePriceText.isEmpty, !purchaseAmountText.isEmpty else { return "Price and amount required" }
-        guard let price = baselinePurchasePriceValue else { return "Use valid number for price" }
-        guard let quantity = baselinePurchaseQuantityValue else { return "Use valid number for amount" }
-        guard price > 0 else { return "Price must be greater than 0" }
-        guard quantity > 0 else { return "Amount must be greater than 0" }
-
-        return nil
-    }
-
-    private var isConsumableSlideValid: Bool {
-        !firstConsumableName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        (consumableUnit != .custom || !consumableCustomUnitName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) &&
-        consumableValidationError == nil
-    }
-
-    private var isUsageSlideValid: Bool {
-        guard let value = baselineDailyValue else { return false }
-        return value > 0 && usageValidationError == nil
-    }
-
-    private var isCostSlideValid: Bool {
-        guard let price = baselinePurchasePriceValue, let amount = baselinePurchaseQuantityValue else { return false }
-        return price > 0 && amount > 0 && costValidationError == nil
-    }
-
-    private var isCurrentSlideValid: Bool {
-        switch pageIndex {
-        case 1:
-            return isConsumableSlideValid
-        case 2:
-            return isUsageSlideValid
-        case 3:
-            return isCostSlideValid
-        default:
-            return true
+        guard let idx = visibleSteps.firstIndex(of: step), idx + 1 < visibleSteps.count else { return }
+        let next = visibleSteps[idx + 1]
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+            step = next
         }
     }
 
@@ -654,13 +1325,12 @@ struct OnboardingView: View {
         return Decimal(string: sanitized)
     }
 
-    private func formatDecimal(_ value: Decimal) -> String {
+    private var currencySymbol: String {
         let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 3
+        formatter.numberStyle = .currency
+        formatter.currencyCode = selectedCurrencyCode
         formatter.locale = .current
-        return formatter.string(from: NSDecimalNumber(decimal: value)) ?? NSDecimalNumber(decimal: value).stringValue
+        return formatter.currencySymbol ?? selectedCurrencyCode
     }
 
     private func formatCurrency(_ value: Decimal) -> String {
@@ -675,46 +1345,49 @@ struct OnboardingView: View {
             return result
         }
 
-        return "\(currencySymbol)\(formatDecimal(value))"
+        return "\(currencySymbol)\(value)"
+    }
+
+    private func prettyNumber(_ value: Double) -> String {
+        if value.rounded() == value {
+            return String(Int(value))
+        }
+        return String(format: "%.1f", value)
+    }
+
+    private func roundedDailyAmount(_ value: Double) -> Double {
+        let clamped = max(0, value)
+        return (clamped * 1000).rounded() / 1000
     }
 
     private func bootstrapInitialValues() {
-        if !CurrencyOption.allCases.map(\.rawValue).contains(selectedCurrencyCode) {
-            selectedCurrencyCode = "EUR"
+        if let initialProfile {
+            if initialProfile.baselineDailyConsume > 0 {
+                dailyAmount = initialProfile.baselineDailyConsume
+            }
+            selectedCurrencyCode = initialProfile.preferredCurrencyCode
+            if let cost = initialProfile.baselineCostPerConsume {
+                unitPriceText = NSDecimalNumber(decimal: cost).stringValue
+            }
         }
 
-        if let initialProfile {
-            if initialProfile.displayName != "Guest" && initialProfile.displayName != "User" {
-                displayName = initialProfile.displayName
-            }
-            if initialProfile.baselineDailyConsume > 0 {
-                baselineDailyAmountText = String(initialProfile.baselineDailyConsume)
-            }
-            if let cost = initialProfile.baselineCostPerConsume {
-                purchasePriceText = NSDecimalNumber(decimal: cost).stringValue
-                purchaseAmountText = "1"
-            }
+        if !CurrencyOption.allCases.map(\.rawValue).contains(selectedCurrencyCode) {
+            selectedCurrencyCode = "EUR"
         }
     }
 
     private func makeDraft() -> OnboardingDraft {
-        let daily = baselineDailyValue ?? 0
-        let cost = estimatedCostPerConsume
-        let mappedUnit = mapBaselineUnitToConsumeUnit()
-
-        return OnboardingDraft(
+        OnboardingDraft(
             displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
-            baselineDailyConsume: max(0, daily),
-            baselineCostPerConsume: cost,
-            firstConsumableName: firstConsumableName.trimmingCharacters(in: .whitespacesAndNewlines),
-            firstConsumableCategory: firstConsumableCategory,
-            firstConsumableUnit: mappedUnit,
+            preferredCurrencyCode: selectedCurrencyCode,
+            baselineDailyConsume: max(0, dailyAmountValue),
+            baselineCostPerConsume: costPerUnit,
+            firstConsumableName: effectiveConsumableName,
+            firstConsumableCategory: effectiveType.category,
+            firstConsumableUnit: effectiveUnitOption.consumeUnit,
+            firstConsumableUnitsPerPurchase: pricingMode == .package ? quantityValue : nil,
             addFirstConsumable: true
         )
-    }
-
-    private func mapBaselineUnitToConsumeUnit() -> ConsumeUnit {
-        consumableUnit.consumeUnit
     }
 }
 

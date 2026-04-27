@@ -26,6 +26,9 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
     var email: String?
     var displayName: String
 
+    // user currency code für costs, savings, reports
+    var preferredCurrencyCode: String
+
     // baseline pro tag als startwert falls historie noch leer ist
     var baselineDailyConsume: Double
 
@@ -43,6 +46,7 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
         id: String,
         email: String? = nil,
         displayName: String,
+        preferredCurrencyCode: String = "EUR",
         baselineDailyConsume: Double = 0,
         baselineCostPerConsume: Decimal? = nil,
         isGuestAccount: Bool = true,
@@ -55,6 +59,7 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
         self.id = id
         self.email = email
         self.displayName = displayName
+        self.preferredCurrencyCode = preferredCurrencyCode.uppercased()
         self.baselineDailyConsume = max(0, baselineDailyConsume)
         self.baselineCostPerConsume = baselineCostPerConsume
         self.isGuestAccount = isGuestAccount
