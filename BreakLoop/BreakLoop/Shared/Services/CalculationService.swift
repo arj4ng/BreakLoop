@@ -21,6 +21,8 @@ import Foundation
 // MARK: ┗━ zentrale tracking berechnung für consumes, costs, savings, rewards
 
 struct CalculationService {
+
+    // kalender injizierbar für tests mit fixem date setup
     private let calendar: Calendar
 
     init(calendar: Calendar = .current) {
@@ -61,6 +63,8 @@ struct CalculationService {
         item: ConsumableItem,
         date: Date
     ) -> Double {
+
+        // nutzt aktuelle kalendergrenzen für tag
         let interval = dayInterval(for: date)
 
         return totalConsumes(
@@ -75,6 +79,8 @@ struct CalculationService {
         item: ConsumableItem,
         date: Date
     ) -> Double {
+
+        // week interval kommt aus calendar weekOfYear
         let interval = weekInterval(for: date)
 
         return totalConsumes(
@@ -89,6 +95,8 @@ struct CalculationService {
         item: ConsumableItem,
         date: Date
     ) -> Double {
+
+        // month interval kommt aus calendar month
         let interval = monthInterval(for: date)
 
         return totalConsumes(
@@ -181,16 +189,19 @@ struct CalculationService {
         let totalSpent = itemPurchases.reduce(Decimal.zero) { $0 + $1.price }
         let totalQuantity = itemPurchases.reduce(0.0) { $0 + max(0, $1.quantity) }
 
+        // primär datenquelle = weighted purchase average
         if totalQuantity > 0 {
             let costPerUnit = totalSpent / decimal(from: totalQuantity)
             let amountPerConsume = max(0.0001, item.defaultAmountPerConsume ?? 1)
             return costPerUnit * decimal(from: amountPerConsume)
         }
 
+        // fallback 1 = item default cost
         if let defaultCost = item.defaultCostPerConsume, defaultCost > 0 {
             return defaultCost
         }
 
+        // fallback 2 = profil baseline cost
         if let baselineCost = profile.baselineCostPerConsume, baselineCost > 0 {
             return baselineCost
         }
@@ -215,6 +226,8 @@ struct CalculationService {
         )
 
         let today = getConsumesForDay(entries: entries, item: item, date: date)
+
+        // avoided nie negativ damit sparen nur bei reduktion zählt
         let avoided = max(0, averagePerDay - today)
         let costPerConsume = calculateEstimatedCostPerConsume(item: item, purchases: purchases, profile: profile)
 
@@ -238,6 +251,8 @@ struct CalculationService {
         )
 
         let thisWeek = getConsumesForWeek(entries: entries, item: item, date: date)
+
+        // avoided nie negativ damit sparen nur bei reduktion zählt
         let avoided = max(0, averagePerWeek - thisWeek)
         let costPerConsume = calculateEstimatedCostPerConsume(item: item, purchases: purchases, profile: profile)
 
@@ -261,6 +276,8 @@ struct CalculationService {
         )
 
         let thisMonth = getConsumesForMonth(entries: entries, item: item, date: date)
+
+        // avoided nie negativ damit sparen nur bei reduktion zählt
         let avoided = max(0, averagePerMonth - thisMonth)
         let costPerConsume = calculateEstimatedCostPerConsume(item: item, purchases: purchases, profile: profile)
 
@@ -287,6 +304,8 @@ struct CalculationService {
         )
 
         let today = getConsumesForDay(entries: entries, item: item, date: date)
+
+        // floor vermeidet halbe avoided counts bei points
         let avoided = Int(max(0, floor(averagePerDay - today)))
 
         var points = avoided * TrackingConstants.pointsPerAvoidedConsume
@@ -383,6 +402,8 @@ struct CalculationService {
         _ entries: [ConsumeEntry],
         consumableItemId: String
     ) -> [ConsumeEntry] {
+
+        // soft deleted logs fliegen aus allen calculations raus
         entries
             .filter { $0.consumableItemId == consumableItemId }
             .filter { !$0.isDeleted }
@@ -392,6 +413,8 @@ struct CalculationService {
         _ purchases: [PurchaseEntry],
         consumableItemId: String
     ) -> [PurchaseEntry] {
+
+        // soft deleted käufe fliegen aus kostenberechnung raus
         purchases
             .filter { $0.consumableItemId == consumableItemId }
             .filter { !$0.isDeleted }

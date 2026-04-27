@@ -15,6 +15,7 @@
 */
 
 import SwiftUI
+import FirebaseCore
 
 
 // MARK: ┏━ [01 APP FLOW] BreakLoopApp
@@ -23,6 +24,10 @@ import SwiftUI
 // app start bleibt schlank, routing passiert in root view
 @main
 struct BreakLoopApp: App {
+    init() {
+        FirebaseApp.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

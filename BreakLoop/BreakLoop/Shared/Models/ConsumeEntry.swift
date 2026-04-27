@@ -22,11 +22,23 @@ import Foundation
 
 // entry enthält soft delete flags damit edits und history sauber bleiben
 struct ConsumeEntry: Identifiable, Codable, Hashable, Sendable {
+
+    // firestore doc id
     let id: String
+
+    // owner user id
     let userId: String
+
+    // link auf consumable item
     let consumableItemId: String
+
+    // event zeitpunkt für timeline
     var timestamp: Date
+
+    // konsum menge in unit
     var amount: Double
+
+    // unit die user beim log gewählt hat
     var unit: ConsumeUnit
     var note: String?
     var trigger: TriggerType?
@@ -36,6 +48,8 @@ struct ConsumeEntry: Identifiable, Codable, Hashable, Sendable {
 
     var createdAt: Date
     var updatedAt: Date
+
+    // soft delete statt hard delete
     var isDeleted: Bool
     var deletedAt: Date?
 
@@ -64,8 +78,14 @@ struct ConsumeEntry: Identifiable, Codable, Hashable, Sendable {
         self.unit = unit
         self.note = note
         self.trigger = trigger
+
+        // craving level bleibt in range 1...10
         self.cravingLevel = cravingLevel.map { min(max($0, 1), 10) }
+
+        // createdAt bleibt original event anlage
         self.createdAt = createdAt
+
+        // updatedAt wird bei edits neu gesetzt
         self.updatedAt = updatedAt
         self.isDeleted = isDeleted
         self.deletedAt = deletedAt

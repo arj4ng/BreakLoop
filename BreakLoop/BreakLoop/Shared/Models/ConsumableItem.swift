@@ -22,10 +22,20 @@ import Foundation
 
 // item bleibt flexibel für zigaretten, alkohol, caffeine oder custom
 struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
+
+    // firestore doc id
     let id: String
+
+    // owner user id
     let userId: String
+
+    // user sichtbarer name vom item
     var name: String
+
+    // grobe gruppierung für filtering
     var category: ConsumableCategory
+
+    // standard unit für dieses item
     var defaultUnit: ConsumeUnit
 
     // amount die für einen consume zählt, zB 0.7g oder 1 piece
@@ -35,8 +45,14 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
     var defaultCostPerConsume: Decimal?
 
     var note: String?
+
+    // creation timestamp für sortierung
     var createdAt: Date
+
+    // update timestamp für sync
     var updatedAt: Date
+
+    // archiv flag blendet item aus ohne datenverlust
     var isArchived: Bool
 
     init(
@@ -62,7 +78,11 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         self.defaultAmountPerConsume = defaultAmountPerConsume
         self.defaultCostPerConsume = defaultCostPerConsume
         self.note = note
+
+        // createdAt bleibt original erstellzeitpunkt
         self.createdAt = createdAt
+
+        // updatedAt wird bei edits später ersetzt
         self.updatedAt = updatedAt
         self.isArchived = isArchived
     }

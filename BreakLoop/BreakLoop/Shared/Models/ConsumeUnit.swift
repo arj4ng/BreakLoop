@@ -21,11 +21,25 @@ import Foundation
 // MARK: ┗━ einheiten für consume und purchase logs
 
 enum ConsumeUnit: String, Codable, CaseIterable, Hashable, Sendable {
+
+    // einzelnes stück
     case piece
+
+    // pack als container einheit
     case pack
+
+    // gramm für lose substanzen
     case gram
+
+    // ml für liquids
     case milliliter
+
+    // cups für drinks
     case cup
+
+    // dose/tablette/kapsel style
     case dose
+
+    // fallback wenn keine unit passt
     case other
 }

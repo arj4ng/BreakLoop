@@ -51,6 +51,7 @@ enum TrackingMockData {
         )
     ]
 
+    // sample consume logs für recency, averages und streak checks
     static let consumeEntries: [ConsumeEntry] = [
         ConsumeEntry(
             id: "consume_01",
@@ -74,6 +75,7 @@ enum TrackingMockData {
         )
     ]
 
+    // sample kauf damit cost per consume bereits daten hat
     static let purchaseEntries: [PurchaseEntry] = [
         PurchaseEntry(
             id: "purchase_01",

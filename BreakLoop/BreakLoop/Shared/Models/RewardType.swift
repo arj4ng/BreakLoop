@@ -21,8 +21,16 @@ import Foundation
 // MARK: ┗━ reward event arten für historie und debug
 
 enum RewardType: String, Codable, CaseIterable, Hashable, Sendable {
+
+    // basis reward für avoided consumes
     case avoidedConsume
+
+    // bonus wenn tag komplett clean bleibt
     case consumeFreeDay
+
+    // bonus wenn ganze woche clean bleibt
     case consumeFreeWeek
+
+    // großer bonus wenn monat clean bleibt
     case consumeFreeMonth
 }
