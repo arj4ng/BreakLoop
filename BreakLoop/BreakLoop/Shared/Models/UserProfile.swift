@@ -32,6 +32,9 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
     // fallback cost pro consume wenn kaufdaten fehlen
     var baselineCostPerConsume: Decimal?
 
+    // true solange account noch guest anonym ist
+    var isGuestAccount: Bool
+
     var onboardingCompleted: Bool
     var createdAt: Date
     var updatedAt: Date
@@ -42,6 +45,7 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
         displayName: String,
         baselineDailyConsume: Double = 0,
         baselineCostPerConsume: Decimal? = nil,
+        isGuestAccount: Bool = true,
         onboardingCompleted: Bool = false,
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -53,6 +57,7 @@ struct UserProfile: Identifiable, Codable, Hashable, Sendable {
         self.displayName = displayName
         self.baselineDailyConsume = max(0, baselineDailyConsume)
         self.baselineCostPerConsume = baselineCostPerConsume
+        self.isGuestAccount = isGuestAccount
         self.onboardingCompleted = onboardingCompleted
         self.createdAt = createdAt
         self.updatedAt = updatedAt

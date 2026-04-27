@@ -26,6 +26,7 @@ enum TrackingMockData {
         displayName: "Demo User",
         baselineDailyConsume: 10,
         baselineCostPerConsume: Decimal(string: "0.45"),
+        isGuestAccount: false,
         onboardingCompleted: true
     )
 

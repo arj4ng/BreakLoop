@@ -17,6 +17,33 @@
 import Foundation
 import FirebaseFirestore
 
+enum FirestoreAccountScope: Sendable {
+    case guest
+    case registered
+}
+
+struct FirestoreUserDataSnapshot: Sendable {
+    var profile: UserProfile?
+    var consumableItems: [ConsumableItem]
+    var consumeEntries: [ConsumeEntry]
+    var purchaseEntries: [PurchaseEntry]
+    var rewardEntries: [RewardEntry]
+
+    var hasAnyData: Bool {
+        profile != nil ||
+        !consumableItems.isEmpty ||
+        !consumeEntries.isEmpty ||
+        !purchaseEntries.isEmpty ||
+        !rewardEntries.isEmpty
+    }
+}
+
+protocol UserDataMigrationRepositoryProtocol {
+    func isAccountDataEmpty(userId: String) async throws -> Bool
+    func exportUserDataSnapshot(userId: String) async throws -> FirestoreUserDataSnapshot
+    func importUserDataSnapshot(_ snapshot: FirestoreUserDataSnapshot, targetUserId: String) async throws
+}
+
 
 // MARK: ┏━ [10 FIREBASE] FirestoreTrackingRepository
 // MARK: ┗━ firestore crud für profile, items, consume, purchase, rewards
@@ -26,7 +53,8 @@ final class FirestoreTrackingRepository:
     ConsumableItemRepositoryProtocol,
     ConsumeEntryRepositoryProtocol,
     PurchaseEntryRepositoryProtocol,
-    RewardEntryRepositoryProtocol
+    RewardEntryRepositoryProtocol,
+    UserDataMigrationRepositoryProtocol
 {
 
     // zentrale firestore db instanz
@@ -42,7 +70,7 @@ final class FirestoreTrackingRepository:
     // MARK: - user profile
 
     func fetchUserProfile(userId: String) async throws -> UserProfile? {
-        let snapshot = try await usersCollection().document(userId).getDocument()
+        let snapshot = try await usersCollection(scope: .registered).document(userId).getDocument()
 
         // nil wenn profil doc noch nicht existiert
         guard let data = snapshot.data() else { return nil }
@@ -52,7 +80,7 @@ final class FirestoreTrackingRepository:
     func saveUserProfile(_ profile: UserProfile) async throws {
 
         // merge true = update ohne felder blind zu löschen
-        try await usersCollection().document(profile.id).setData(userProfileData(profile), merge: true)
+        try await usersCollection(scope: .registered).document(profile.id).setData(userProfileData(profile), merge: true)
     }
 
 
@@ -171,37 +199,198 @@ final class FirestoreTrackingRepository:
             .setData(rewardEntryData(entry), merge: true)
     }
 
+    func fetchUserProfile(userId: String, scope: FirestoreAccountScope) async throws -> UserProfile? {
+        let snapshot = try await usersCollection(scope: scope).document(userId).getDocument()
+        guard let data = snapshot.data() else { return nil }
+        return userProfile(from: data, fallbackId: userId)
+    }
+
+    func saveUserProfile(_ profile: UserProfile, scope: FirestoreAccountScope) async throws {
+        try await usersCollection(scope: scope).document(profile.id).setData(userProfileData(profile), merge: true)
+    }
+
+
+    // MARK: - migration helpers
+
+    func isAccountDataEmpty(userId: String) async throws -> Bool {
+        let snapshot = try await exportUserDataSnapshot(userId: userId, scope: .registered)
+        return !snapshot.hasAnyData
+    }
+
+    func exportUserDataSnapshot(userId: String) async throws -> FirestoreUserDataSnapshot {
+        try await exportUserDataSnapshot(userId: userId, scope: .registered)
+    }
+
+    func exportUserDataSnapshot(userId: String, scope: FirestoreAccountScope) async throws -> FirestoreUserDataSnapshot {
+        async let profile = fetchUserProfile(userId: userId, scope: scope)
+        async let itemsDocs = consumableItemsCollection(userId: userId, scope: scope).getDocuments()
+        async let consumeDocs = consumeEntriesCollection(userId: userId, scope: scope).getDocuments()
+        async let purchaseDocs = purchaseEntriesCollection(userId: userId, scope: scope).getDocuments()
+        async let rewardDocs = rewardEntriesCollection(userId: userId, scope: scope).getDocuments()
+
+        let itemModels = try await itemsDocs.documents.compactMap {
+            consumableItem(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+        let consumeModels = try await consumeDocs.documents.compactMap {
+            consumeEntry(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+        let purchaseModels = try await purchaseDocs.documents.compactMap {
+            purchaseEntry(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+        let rewardModels = try await rewardDocs.documents.compactMap {
+            rewardEntry(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+
+        return FirestoreUserDataSnapshot(
+            profile: try await profile,
+            consumableItems: itemModels,
+            consumeEntries: consumeModels,
+            purchaseEntries: purchaseModels,
+            rewardEntries: rewardModels
+        )
+    }
+
+    func importUserDataSnapshot(_ snapshot: FirestoreUserDataSnapshot, targetUserId: String) async throws {
+        try await importUserDataSnapshot(snapshot, targetUserId: targetUserId, targetScope: .registered)
+    }
+
+    func importUserDataSnapshot(
+        _ snapshot: FirestoreUserDataSnapshot,
+        targetUserId: String,
+        targetScope: FirestoreAccountScope
+    ) async throws {
+        guard snapshot.hasAnyData else { return }
+
+        if let profile = snapshot.profile {
+            let migratedProfile = UserProfile(
+                id: targetUserId,
+                email: profile.email,
+                displayName: profile.displayName,
+                baselineDailyConsume: profile.baselineDailyConsume,
+                baselineCostPerConsume: profile.baselineCostPerConsume,
+                isGuestAccount: false,
+                onboardingCompleted: profile.onboardingCompleted,
+                createdAt: profile.createdAt,
+                updatedAt: .now
+            )
+
+            try await saveUserProfile(migratedProfile, scope: targetScope)
+        }
+
+        for item in snapshot.consumableItems {
+            let migrated = ConsumableItem(
+                id: item.id,
+                userId: targetUserId,
+                name: item.name,
+                category: item.category,
+                defaultUnit: item.defaultUnit,
+                defaultAmountPerConsume: item.defaultAmountPerConsume,
+                defaultCostPerConsume: item.defaultCostPerConsume,
+                note: item.note,
+                createdAt: item.createdAt,
+                updatedAt: .now,
+                isArchived: item.isArchived
+            )
+            try await consumableItemsCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(consumableItemData(migrated), merge: true)
+        }
+
+        for entry in snapshot.consumeEntries {
+            let migrated = ConsumeEntry(
+                id: entry.id,
+                userId: targetUserId,
+                consumableItemId: entry.consumableItemId,
+                timestamp: entry.timestamp,
+                amount: entry.amount,
+                unit: entry.unit,
+                note: entry.note,
+                trigger: entry.trigger,
+                cravingLevel: entry.cravingLevel,
+                createdAt: entry.createdAt,
+                updatedAt: .now,
+                isDeleted: entry.isDeleted,
+                deletedAt: entry.deletedAt
+            )
+            try await consumeEntriesCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(consumeEntryData(migrated), merge: true)
+        }
+
+        for entry in snapshot.purchaseEntries {
+            let migrated = PurchaseEntry(
+                id: entry.id,
+                userId: targetUserId,
+                consumableItemId: entry.consumableItemId,
+                purchaseDate: entry.purchaseDate,
+                price: entry.price,
+                quantity: entry.quantity,
+                unit: entry.unit,
+                calculatedCostPerUnit: entry.calculatedCostPerUnit,
+                productName: entry.productName,
+                note: entry.note,
+                createdAt: entry.createdAt,
+                updatedAt: .now,
+                isDeleted: entry.isDeleted,
+                deletedAt: entry.deletedAt
+            )
+            try await purchaseEntriesCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(purchaseEntryData(migrated), merge: true)
+        }
+
+        for entry in snapshot.rewardEntries {
+            let migrated = RewardEntry(
+                id: entry.id,
+                userId: targetUserId,
+                consumableItemId: entry.consumableItemId,
+                type: entry.type,
+                points: entry.points,
+                reason: entry.reason,
+                createdAt: entry.createdAt
+            )
+            try await rewardEntriesCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(rewardEntryData(migrated), merge: true)
+        }
+    }
+
 
     // MARK: - paths
 
-    private func usersCollection() -> CollectionReference {
+    private func usersCollection(scope: FirestoreAccountScope = .registered) -> CollectionReference {
 
         // root users collection
-        db.collection(FirestorePath.users)
+        switch scope {
+        case .guest:
+            db.collection(FirestorePath.guestUsers)
+        case .registered:
+            db.collection(FirestorePath.users)
+        }
     }
 
-    private func consumableItemsCollection(userId: String) -> CollectionReference {
+    private func consumableItemsCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
 
         // subcollection pfad users/{uid}/consumableItems
-        usersCollection().document(userId).collection(FirestorePath.consumableItems)
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.consumableItems)
     }
 
-    private func consumeEntriesCollection(userId: String) -> CollectionReference {
+    private func consumeEntriesCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
 
         // subcollection pfad users/{uid}/consumeEntries
-        usersCollection().document(userId).collection(FirestorePath.consumeEntries)
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.consumeEntries)
     }
 
-    private func purchaseEntriesCollection(userId: String) -> CollectionReference {
+    private func purchaseEntriesCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
 
         // subcollection pfad users/{uid}/purchaseEntries
-        usersCollection().document(userId).collection(FirestorePath.purchaseEntries)
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.purchaseEntries)
     }
 
-    private func rewardEntriesCollection(userId: String) -> CollectionReference {
+    private func rewardEntriesCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
 
         // subcollection pfad users/{uid}/rewardEntries
-        usersCollection().document(userId).collection(FirestorePath.rewardEntries)
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.rewardEntries)
     }
 
 
@@ -216,6 +405,7 @@ final class FirestoreTrackingRepository:
             "displayName": value.displayName,
             "baselineDailyConsume": value.baselineDailyConsume,
             "baselineCostPerConsume": decimalToNumber(value.baselineCostPerConsume) as Any,
+            "isGuestAccount": value.isGuestAccount,
             "onboardingCompleted": value.onboardingCompleted,
             "createdAt": Timestamp(date: value.createdAt),
             "updatedAt": Timestamp(date: value.updatedAt)
@@ -305,6 +495,7 @@ final class FirestoreTrackingRepository:
         let email = data["email"] as? String
         let baselineDailyConsume = data["baselineDailyConsume"] as? Double ?? 0
         let baselineCostPerConsume = numberToDecimal(data["baselineCostPerConsume"])
+        let isGuestAccount = data["isGuestAccount"] as? Bool ?? false
         let onboardingCompleted = data["onboardingCompleted"] as? Bool ?? false
         let createdAt = timestampToDate(data["createdAt"]) ?? .now
         let updatedAt = timestampToDate(data["updatedAt"]) ?? .now
@@ -316,6 +507,7 @@ final class FirestoreTrackingRepository:
             displayName: displayName,
             baselineDailyConsume: baselineDailyConsume,
             baselineCostPerConsume: baselineCostPerConsume,
+            isGuestAccount: isGuestAccount,
             onboardingCompleted: onboardingCompleted,
             createdAt: createdAt,
             updatedAt: updatedAt
@@ -467,6 +659,7 @@ final class FirestoreTrackingRepository:
 
 
 enum FirestorePath {
+    static let guestUsers = "guestUsers"
     static let users = "users"
     static let consumableItems = "consumableItems"
     static let consumeEntries = "consumeEntries"
