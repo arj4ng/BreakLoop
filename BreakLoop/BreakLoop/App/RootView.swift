@@ -22,25 +22,11 @@ import SwiftUI
 
 struct RootView: View {
 
-    // route steuert welchen app zustand user gerade sieht
-    private enum Route {
-        case loading
-        case auth
-        case onboarding
-        case app
-    }
-
-    // start immer im loading state bis auth/profile geprüft wurde
-    @State private var route: Route = .loading
+    // zentraler app state für root routing und session flags
+    @State private var appState = AppStateSnapshot()
 
     // onboarding steuert ob auth als login, register oder guest startet
     @State private var authEntryIntent: AuthEntryIntent = .signIn
-
-    // true nur wenn auth route aus onboarding geöffnet wurde
-    @State private var authOpenedFromOnboarding: Bool = false
-
-    // aktive uid im root für spätere dependency injection
-    @State private var userId: String?
 
     // aktuelle session für onboarding save scope
     @State private var currentSession: AuthUserSession?
@@ -65,7 +51,7 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            switch route {
+            switch appState.route {
             case .loading:
                 ProgressView()
 
@@ -73,15 +59,15 @@ struct RootView: View {
                 AuthView(authService: authService, onAuthenticated: {
 
                     // nach auth change route erneut auflösen
-                    route = .loading
-                    authOpenedFromOnboarding = false
+                    appState.route = .loading
+                    appState.authOpenedFromOnboarding = false
 
                     Task {
                         await resolveInitialRoute()
                     }
-                }, initialIntent: authEntryIntent, canGoBackToOnboarding: authOpenedFromOnboarding, onBackToOnboarding: {
-                    authOpenedFromOnboarding = false
-                    route = .onboarding
+                }, initialIntent: authEntryIntent, canGoBackToOnboarding: appState.authOpenedFromOnboarding, onBackToOnboarding: {
+                    appState.authOpenedFromOnboarding = false
+                    appState.route = .onboarding
                 })
 
             case .onboarding:
@@ -105,9 +91,9 @@ struct RootView: View {
         }
         .sheet(isPresented: $showsOnboardingRegisterSheet) {
             RegisterView(authService: authService, onRegistered: {
-                showsOnboardingRegisterSheet = false
-                route = .loading
-                authOpenedFromOnboarding = false
+                    showsOnboardingRegisterSheet = false
+                appState.route = .loading
+                appState.authOpenedFromOnboarding = false
 
                 Task {
                     await resolveInitialRoute()
@@ -121,8 +107,8 @@ struct RootView: View {
                 authService: authService,
                 onAuthenticated: {
                     showsOnboardingAuthSheet = false
-                    route = .loading
-                    authOpenedFromOnboarding = false
+                    appState.route = .loading
+                    appState.authOpenedFromOnboarding = false
 
                     Task {
                         await resolveInitialRoute()
@@ -141,13 +127,13 @@ struct RootView: View {
         guard let session = authService.currentSession() else {
 
             // default für nicht eingeloggte user immer onboarding
-            route = .onboarding
-            authOpenedFromOnboarding = false
+            appState.route = .onboarding
+            appState.authOpenedFromOnboarding = false
             return
         }
 
         do {
-            userId = session.userId
+            appState.userId = session.userId
             currentSession = session
 
             // legt profil doc an und lädt state
@@ -157,12 +143,12 @@ struct RootView: View {
             let finalProfile = try await applyPendingOnboardingIfNeeded(baseProfile: profile, session: session)
             currentProfile = finalProfile
 
-            route = .app
+            appState.route = .app
         } catch {
 
             // bei fehler sicher auf auth fallback gehen
-            route = .auth
-            authOpenedFromOnboarding = false
+            appState.route = .auth
+            appState.authOpenedFromOnboarding = false
         }
     }
 
@@ -214,7 +200,7 @@ struct RootView: View {
         // onboarding nur local abschließen, account save passiert nach auth
         pendingOnboardingDraft = draft
         authEntryIntent = intent
-        authOpenedFromOnboarding = true
+        appState.authOpenedFromOnboarding = true
 
         // register flow direkt öffnen statt über login screen
         if intent == .register {
@@ -222,7 +208,7 @@ struct RootView: View {
         } else if intent == .signIn {
             showsOnboardingAuthSheet = true
         } else {
-            route = .auth
+            appState.route = .auth
         }
     }
 
@@ -255,6 +241,9 @@ struct RootView: View {
                 name: draft.firstConsumableName,
                 category: draft.firstConsumableCategory,
                 defaultUnit: draft.firstConsumableUnit,
+                usageMethod: mapUsageMethod(draft.firstConsumableUsageMethod),
+                pricingMode: mapPricingMode(draft.firstConsumablePricingMode),
+                defaultPurchaseUnit: draft.firstConsumablePurchaseUnit,
                 defaultAmountPerConsume: 1,
                 defaultUnitsPerPurchase: draft.firstConsumableUnitsPerPurchase,
                 defaultCostPerConsume: draft.baselineCostPerConsume,
@@ -271,19 +260,35 @@ struct RootView: View {
         return updatedProfile
     }
 
+    private func mapUsageMethod(_ value: OnboardingUsageMethod) -> ConsumableUsageMethod {
+        switch value {
+        case .perPiece: return .perPiece
+        case .perSession: return .perSession
+        case .perGram: return .perGram
+        case .perMilliliter: return .perMilliliter
+        case .perCup: return .perCup
+        case .perDose: return .perDose
+        case .custom: return .custom
+        }
+    }
+
+    private func mapPricingMode(_ value: OnboardingPricingMode) -> ConsumablePricingMode {
+        switch value {
+        case .perUnit: return .perUnit
+        case .perPurchase: return .perPurchase
+        }
+    }
+
     private func handleSignOut() {
         do {
             try authService.signOut()
             currentSession = nil
             currentProfile = nil
-            userId = nil
             authEntryIntent = .signIn
-            authOpenedFromOnboarding = false
-            route = .onboarding
+            appState.clearSessionAndResetToOnboarding()
         } catch {
             authEntryIntent = .signIn
-            authOpenedFromOnboarding = false
-            route = .onboarding
+            appState.clearSessionAndResetToOnboarding()
         }
     }
 }

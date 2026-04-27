@@ -17,6 +17,35 @@
 import Foundation
 
 
+// MARK: ┏━ [10 FIREBASE] Account Scope
+// MARK: ┗━ trennt guest root von registrierten user docs
+
+enum FirestoreAccountScope: Sendable {
+    case guest
+    case registered
+}
+
+
+// MARK: ┏━ [10 FIREBASE] User Data Snapshot
+// MARK: ┗━ migration payload für export/import zwischen scopes
+
+struct FirestoreUserDataSnapshot: Sendable {
+    var profile: UserProfile?
+    var consumableItems: [ConsumableItem]
+    var consumeEntries: [ConsumeEntry]
+    var purchaseEntries: [PurchaseEntry]
+    var rewardEntries: [RewardEntry]
+
+    var hasAnyData: Bool {
+        profile != nil ||
+        !consumableItems.isEmpty ||
+        !consumeEntries.isEmpty ||
+        !purchaseEntries.isEmpty ||
+        !rewardEntries.isEmpty
+    }
+}
+
+
 // MARK: ┏━ [10 FIREBASE] Repository Protocols
 // MARK: ┗━ firestore vorbereitete contracts, implementierung folgt später
 
@@ -72,4 +101,20 @@ protocol RewardEntryRepositoryProtocol {
 
     // schreibt reward event in historie
     func saveRewardEntry(_ entry: RewardEntry) async throws
+}
+
+
+// MARK: ┏━ [10 FIREBASE] Migration Protocol
+// MARK: ┗━ guest zu account datenfluss und snapshot helper
+
+protocol UserDataMigrationRepositoryProtocol {
+
+    // prüft ob target account noch keine tracking daten hat
+    func isAccountDataEmpty(userId: String) async throws -> Bool
+
+    // export aller tracking daten aus default scope
+    func exportUserDataSnapshot(userId: String) async throws -> FirestoreUserDataSnapshot
+
+    // import snapshot in target user default scope
+    func importUserDataSnapshot(_ snapshot: FirestoreUserDataSnapshot, targetUserId: String) async throws
 }

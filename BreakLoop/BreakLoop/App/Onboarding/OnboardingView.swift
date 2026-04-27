@@ -25,8 +25,26 @@ struct OnboardingDraft: Sendable {
     var firstConsumableName: String
     var firstConsumableCategory: ConsumableCategory
     var firstConsumableUnit: ConsumeUnit
+    var firstConsumableUsageMethod: OnboardingUsageMethod
+    var firstConsumablePricingMode: OnboardingPricingMode
+    var firstConsumablePurchaseUnit: ConsumeUnit?
     var firstConsumableUnitsPerPurchase: Double?
     var addFirstConsumable: Bool
+}
+
+enum OnboardingPricingMode: String, Codable, Sendable {
+    case perUnit
+    case perPurchase
+}
+
+enum OnboardingUsageMethod: String, Codable, Sendable {
+    case perPiece
+    case perSession
+    case perGram
+    case perMilliliter
+    case perCup
+    case perDose
+    case custom
 }
 
 
@@ -34,10 +52,10 @@ struct OnboardingDraft: Sendable {
 // MARK: ┗━ premium guided onboarding mit einem klaren fokus pro screen
 
 struct OnboardingView: View {
-    private let contentTopSpacing: CGFloat = 20
+    private let contentTopSpacing: CGFloat = 8
     private let cardRadius: CGFloat = 16
     private let sectionSpacing: CGFloat = 18
-    private let bottomBarReservedHeight: CGFloat = 170
+    private let bottomBarReservedHeight: CGFloat = 190
 
     private enum Step: Int, CaseIterable {
         case welcome
@@ -152,6 +170,37 @@ struct OnboardingView: View {
             }
         }
 
+        var allowedUnits: [UnitOption] {
+            switch self {
+            case .cigarettes: return [.piece, .pack]
+            case .vape: return [.dose, .milliliter, .piece, .pack]
+            case .weed: return [.gram, .dose, .other]
+            case .alcohol: return [.cup, .milliliter, .piece, .pack]
+            case .caffeine: return [.cup, .milliliter, .piece, .dose]
+            case .custom: return UnitOption.allCases
+            }
+        }
+
+        var usageMethod: OnboardingUsageMethod {
+            switch self {
+            case .cigarettes: return .perPiece
+            case .vape: return .perSession
+            case .weed: return .perGram
+            case .alcohol: return .perCup
+            case .caffeine: return .perCup
+            case .custom: return .custom
+            }
+        }
+
+        var pricingModeDefault: PricingMode {
+            switch self {
+            case .cigarettes, .vape, .alcohol:
+                return .package
+            case .weed, .caffeine, .custom:
+                return .unit
+            }
+        }
+
         var usageExample: String {
             switch self {
             case .cigarettes: return "cigarettes/day"
@@ -189,7 +238,7 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes: return [3, 5, 8, 10, 12, 15, 20]
             case .vape: return [3, 5, 8, 10, 15, 20, 30]
-            case .weed: return [1, 2, 3, 4, 5]
+            case .weed: return [0.2, 0.5, 1, 1.5, 2]
             case .alcohol: return [1, 2, 3, 4, 5, 6]
             case .caffeine: return [1, 2, 3, 4, 5, 6]
             case .custom: return [1, 2, 3, 5, 8, 10]
@@ -203,7 +252,7 @@ struct OnboardingView: View {
             case .vape:
                 return [21, 35, 56, 70, 105, 140]
             case .weed:
-                return [3.5, 7, 14, 21, 28]
+                return [1.4, 3.5, 7, 10.5, 14]
             case .alcohol:
                 return [7, 14, 21, 28, 35, 42]
             case .caffeine:
@@ -216,7 +265,7 @@ struct OnboardingView: View {
         var defaultDailyAmount: Double {
             switch self {
             case .weed:
-                return 1
+                return 0.5
             default:
                 return dailyPresets.first ?? 1
             }
@@ -273,6 +322,7 @@ struct OnboardingView: View {
     @State private var customUnit: UnitOption = .other
     @State private var customUnitName: String = ""
     @State private var customPricingMode: PricingMode = .unit
+    @State private var customUsageMethod: OnboardingUsageMethod = .custom
 
     @State private var displayName: String = ""
     @State private var dailyAmount: Double = 10
@@ -342,6 +392,13 @@ struct OnboardingView: View {
             return trimmed.isEmpty ? "Custom" : trimmed
         }
         return effectiveType.title
+    }
+
+    private var effectiveUsageMethod: OnboardingUsageMethod {
+        if effectiveType == .custom {
+            return customUsageMethod
+        }
+        return effectiveType.usageMethod
     }
 
     private var dailyAmountValue: Double {
@@ -434,10 +491,8 @@ struct OnboardingView: View {
 
     private var pricingMode: PricingMode {
         switch effectiveType {
-        case .cigarettes, .vape, .alcohol:
-            return .package
-        case .weed, .caffeine:
-            return .unit
+        case .cigarettes, .vape, .weed, .alcohol, .caffeine:
+            return effectiveType.pricingModeDefault
         case .custom:
             return customPricingMode
         }
@@ -586,7 +641,7 @@ struct OnboardingView: View {
                 .blur(radius: 52)
                 .offset(x: -140, y: -140)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 0) {
                 header
 
                 ScrollViewReader { proxy in
@@ -617,14 +672,14 @@ struct OnboardingView: View {
                                     } else {
                                         summaryStep
                                     }
-                            case .summary:
-                                summaryStep
+                                case .summary:
+                                    summaryStep
+                                }
                             }
-                        }
-                        .transition(stepTransition)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.88), value: step)
-                        .padding(.top, contentTopSpacing)
-                        .padding(.bottom, bottomBarReservedHeight)
+                            .transition(stepTransition)
+                            .animation(.spring(response: 0.35, dampingFraction: 0.88), value: step)
+                            .padding(.top, contentTopSpacing)
+                            .padding(.bottom, bottomBarReservedHeight)
                             .background(
                                 GeometryReader { contentProxy in
                                     Color.clear.preference(
@@ -641,29 +696,23 @@ struct OnboardingView: View {
                                 proxy.scrollTo(target, anchor: .center)
                             }
                         }
-                        .mask {
-                            if shouldEnableScroll {
-                                VStack(spacing: 0) {
-                                    LinearGradient(
-                                        colors: [.clear, .black],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                    .frame(height: 28)
-
-                                    Rectangle()
-                                        .fill(.black)
-                                }
-                            } else {
-                                Rectangle()
-                                    .fill(.black)
-                            }
-                        }
                         .onAppear {
                             scrollViewportHeight = viewportProxy.size.height
                         }
                         .onChange(of: viewportProxy.size.height) { _, newHeight in
                             scrollViewportHeight = newHeight
+                        }
+                        .overlay(alignment: .top) {
+                            LinearGradient(
+                                colors: [
+                                    Color("Background").opacity(hasScrolledUnderChrome ? 0.72 : 0),
+                                    Color.clear
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .frame(height: 30)
+                            .allowsHitTesting(false)
                         }
                     }
                 }
@@ -688,15 +737,17 @@ struct OnboardingView: View {
                 break
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            bottomBar
-                .padding(.horizontal, 20)
-        }
         .onPreferenceChange(OnboardingScrollOffsetPreferenceKey.self) { value in
             scrollContentOffset = value
         }
         .onPreferenceChange(OnboardingScrollContentHeightPreferenceKey.self) { value in
             scrollBodyHeight = value
+        }
+        .safeAreaInset(edge: .bottom, spacing: -34) {
+            bottomChrome
+                .padding(.horizontal, 20)
+                .padding(.bottom, -34)
+                .ignoresSafeArea(edges: .bottom)
         }
     }
 
@@ -767,6 +818,28 @@ struct OnboardingView: View {
         )
     }
 
+    private var bottomChrome: some View {
+        ZStack(alignment: .bottom) {
+            LinearGradient(
+                colors: [Color.clear, Color("Background").opacity(0.74), Color("Background").opacity(0.96)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 140)
+            .allowsHitTesting(false)
+
+            Rectangle()
+                .fill(Color("Background"))
+                .frame(height: 34)
+                .allowsHitTesting(false)
+
+            bottomBar
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     private var welcomeStep: some View {
         VStack(alignment: .leading, spacing: sectionSpacing) {
             stepTitle(
@@ -815,6 +888,8 @@ struct OnboardingView: View {
                         }
                         if type == .custom {
                             customPricingMode = .unit
+                            customUsageMethod = .custom
+                            customUnit = .other
                         }
                         dailyAmount = type.defaultDailyAmount
                         if let firstPreset = type.quantityPresets.first {
@@ -864,13 +939,34 @@ struct OnboardingView: View {
 
                         pickerRow(label: "Unit") {
                             Picker("Unit", selection: $customUnit) {
-                                ForEach(UnitOption.allCases) { unit in
+                                ForEach(selectedType?.allowedUnits ?? UnitOption.allCases) { unit in
                                     Text(unit.label).tag(unit)
                                 }
                             }
                             .pickerStyle(.menu)
                             .tint(Color("TextPrimary"))
                         }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Usage method")
+                            .font(.subheadline)
+                            .foregroundStyle(Color("TextSecondary"))
+
+                        Picker("Usage method", selection: $customUsageMethod) {
+                            Text("Per piece").tag(OnboardingUsageMethod.perPiece)
+                            Text("Per session").tag(OnboardingUsageMethod.perSession)
+                            Text("Per gram").tag(OnboardingUsageMethod.perGram)
+                            Text("Per ml").tag(OnboardingUsageMethod.perMilliliter)
+                            Text("Per cup").tag(OnboardingUsageMethod.perCup)
+                            Text("Per dose").tag(OnboardingUsageMethod.perDose)
+                            Text("Custom").tag(OnboardingUsageMethod.custom)
+                        }
+                        .pickerStyle(.menu)
+                        .tint(Color("TextPrimary"))
+                        .padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                        .background(Color("InputBackground"), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
 
                     if customUnit == .other {
@@ -1234,29 +1330,6 @@ struct OnboardingView: View {
                 }
                 .padding(.top, 10)
                 .padding(.bottom, 10)
-                .background(
-                    LinearGradient(
-                        colors: [
-                            Color("Background").opacity(0),
-                            Color("Background").opacity(hasScrolledUnderChrome ? 0.78 : 0.94),
-                            Color("Background")
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .ignoresSafeArea()
-                )
-                .overlay {
-                    LinearGradient(
-                        colors: [
-                            Color.blue.opacity(hasScrolledUnderChrome ? 0.20 : 0),
-                            Color.cyan.opacity(hasScrolledUnderChrome ? 0.08 : 0)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .allowsHitTesting(false)
-                }
             )
         }
 
@@ -1297,18 +1370,6 @@ struct OnboardingView: View {
             }
             .padding(.top, 10)
             .padding(.bottom, 10)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color("Background").opacity(0),
-                        Color("Background").opacity(0.94),
-                        Color("Background")
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
         )
     }
 
@@ -1513,6 +1574,9 @@ struct OnboardingView: View {
             firstConsumableName: effectiveConsumableName,
             firstConsumableCategory: effectiveType.category,
             firstConsumableUnit: effectiveUnitOption.consumeUnit,
+            firstConsumableUsageMethod: effectiveUsageMethod,
+            firstConsumablePricingMode: pricingMode == .unit ? .perUnit : .perPurchase,
+            firstConsumablePurchaseUnit: pricingMode == .package ? .pack : nil,
             firstConsumableUnitsPerPurchase: pricingMode == .package ? quantityValue : nil,
             addFirstConsumable: true
         )

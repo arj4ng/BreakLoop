@@ -16,6 +16,20 @@
 
 import Foundation
 
+enum ConsumableUsageMethod: String, Codable, Hashable, Sendable {
+    case perPiece
+    case perSession
+    case perGram
+    case perMilliliter
+    case perCup
+    case perDose
+    case custom
+}
+
+enum ConsumablePricingMode: String, Codable, Hashable, Sendable {
+    case perUnit
+    case perPurchase
+}
 
 // MARK: ┏━ [11 MODELS] ConsumableItem
 // MARK: ┗━ user definierter konsum typ für entries und purchases
@@ -37,6 +51,15 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
 
     // standard unit für dieses item
     var defaultUnit: ConsumeUnit
+
+    // beschreibt wie nutzung semantisch gemessen wird
+    var usageMethod: ConsumableUsageMethod
+
+    // bestimmt ob kosten direkt oder pro purchase gerechnet werden
+    var pricingMode: ConsumablePricingMode
+
+    // optionale purchase einheit zB pack für 20 piece
+    var defaultPurchaseUnit: ConsumeUnit?
 
     // amount die für einen consume zählt, zB 0.7g oder 1 piece
     var defaultAmountPerConsume: Double?
@@ -64,6 +87,9 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         name: String,
         category: ConsumableCategory,
         defaultUnit: ConsumeUnit,
+        usageMethod: ConsumableUsageMethod = .custom,
+        pricingMode: ConsumablePricingMode = .perUnit,
+        defaultPurchaseUnit: ConsumeUnit? = nil,
         defaultAmountPerConsume: Double? = nil,
         defaultUnitsPerPurchase: Double? = nil,
         defaultCostPerConsume: Decimal? = nil,
@@ -79,6 +105,9 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         self.name = name
         self.category = category
         self.defaultUnit = defaultUnit
+        self.usageMethod = usageMethod
+        self.pricingMode = pricingMode
+        self.defaultPurchaseUnit = defaultPurchaseUnit
         self.defaultAmountPerConsume = defaultAmountPerConsume
         self.defaultUnitsPerPurchase = defaultUnitsPerPurchase.map { max(0, $0) }
         self.defaultCostPerConsume = defaultCostPerConsume

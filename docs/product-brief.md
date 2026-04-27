@@ -8,3 +8,4 @@ kurze sammlung für planung vor coding
 - [04 feature verhalten](./product-brief/04-feature-behavior.md)
 - [05 pseudo flow](./product-brief/05-pseudocode.md)
 - [06 architektur + check](./product-brief/06-architecture-and-checklist.md)
+- [07 firestore + onboarding hierarchy](./product-brief/07-firestore-onboarding-hierarchy.md)

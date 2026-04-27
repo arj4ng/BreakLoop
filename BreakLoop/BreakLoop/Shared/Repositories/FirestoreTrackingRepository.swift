@@ -17,33 +17,6 @@
 import Foundation
 import FirebaseFirestore
 
-enum FirestoreAccountScope: Sendable {
-    case guest
-    case registered
-}
-
-struct FirestoreUserDataSnapshot: Sendable {
-    var profile: UserProfile?
-    var consumableItems: [ConsumableItem]
-    var consumeEntries: [ConsumeEntry]
-    var purchaseEntries: [PurchaseEntry]
-    var rewardEntries: [RewardEntry]
-
-    var hasAnyData: Bool {
-        profile != nil ||
-        !consumableItems.isEmpty ||
-        !consumeEntries.isEmpty ||
-        !purchaseEntries.isEmpty ||
-        !rewardEntries.isEmpty
-    }
-}
-
-protocol UserDataMigrationRepositoryProtocol {
-    func isAccountDataEmpty(userId: String) async throws -> Bool
-    func exportUserDataSnapshot(userId: String) async throws -> FirestoreUserDataSnapshot
-    func importUserDataSnapshot(_ snapshot: FirestoreUserDataSnapshot, targetUserId: String) async throws
-}
-
 
 // MARK: ┏━ [10 FIREBASE] FirestoreTrackingRepository
 // MARK: ┗━ firestore crud für profile, items, consume, purchase, rewards
@@ -291,6 +264,9 @@ final class FirestoreTrackingRepository:
                 name: item.name,
                 category: item.category,
                 defaultUnit: item.defaultUnit,
+                usageMethod: item.usageMethod,
+                pricingMode: item.pricingMode,
+                defaultPurchaseUnit: item.defaultPurchaseUnit,
                 defaultAmountPerConsume: item.defaultAmountPerConsume,
                 defaultUnitsPerPurchase: item.defaultUnitsPerPurchase,
                 defaultCostPerConsume: item.defaultCostPerConsume,
@@ -431,6 +407,9 @@ final class FirestoreTrackingRepository:
             "name": value.name,
             "category": value.category.rawValue,
             "defaultUnit": value.defaultUnit.rawValue,
+            "usageMethod": value.usageMethod.rawValue,
+            "pricingMode": value.pricingMode.rawValue,
+            "defaultPurchaseUnit": value.defaultPurchaseUnit?.rawValue as Any,
             "defaultAmountPerConsume": value.defaultAmountPerConsume as Any,
             "defaultUnitsPerPurchase": value.defaultUnitsPerPurchase as Any,
             "defaultCostPerConsume": decimalToNumber(value.defaultCostPerConsume) as Any,
@@ -539,6 +518,29 @@ final class FirestoreTrackingRepository:
             return nil
         }
 
+        let usageMethod: ConsumableUsageMethod
+        if let usageRaw = data["usageMethod"] as? String,
+           let mapped = ConsumableUsageMethod(rawValue: usageRaw) {
+            usageMethod = mapped
+        } else {
+            usageMethod = .custom
+        }
+
+        let pricingMode: ConsumablePricingMode
+        if let pricingRaw = data["pricingMode"] as? String,
+           let mapped = ConsumablePricingMode(rawValue: pricingRaw) {
+            pricingMode = mapped
+        } else {
+            pricingMode = .perUnit
+        }
+
+        let defaultPurchaseUnit: ConsumeUnit?
+        if let purchaseRaw = data["defaultPurchaseUnit"] as? String {
+            defaultPurchaseUnit = ConsumeUnit(rawValue: purchaseRaw)
+        } else {
+            defaultPurchaseUnit = nil
+        }
+
         // guard schützt enum mapping gegen ungültige raw values
         return ConsumableItem(
             id: (data["id"] as? String) ?? fallbackId,
@@ -546,6 +548,9 @@ final class FirestoreTrackingRepository:
             name: name,
             category: category,
             defaultUnit: defaultUnit,
+            usageMethod: usageMethod,
+            pricingMode: pricingMode,
+            defaultPurchaseUnit: defaultPurchaseUnit,
             defaultAmountPerConsume: data["defaultAmountPerConsume"] as? Double,
             defaultUnitsPerPurchase: data["defaultUnitsPerPurchase"] as? Double,
             defaultCostPerConsume: numberToDecimal(data["defaultCostPerConsume"]),
