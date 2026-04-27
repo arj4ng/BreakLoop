@@ -285,7 +285,37 @@ struct OnboardingView: View {
     @State private var quantityInPurchase: Double = 20
     @State private var quantityCustomText: String = ""
     @State private var scrollTarget: String?
+    @State private var scrollContentOffset: CGFloat = 0
+    @State private var scrollViewportHeight: CGFloat = 0
+    @State private var scrollBodyHeight: CGFloat = 0
+    @State private var isForwardNavigation: Bool = true
     @FocusState private var focusedField: FieldFocus?
+
+    private var hasScrolledUnderChrome: Bool {
+        scrollContentOffset < -8
+    }
+
+    private var shouldEnableScroll: Bool {
+        // solange layout messung noch nicht da ist, scroll nie blocken
+        if scrollViewportHeight <= 0 || scrollBodyHeight <= 0 {
+            return true
+        }
+        return scrollBodyHeight > (scrollViewportHeight - 1)
+    }
+
+    private var stepTransition: AnyTransition {
+        if isForwardNavigation {
+            return .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            )
+        } else {
+            return .asymmetric(
+                insertion: .move(edge: .leading).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            )
+        }
+    }
 
     private var progressIndex: Int {
         visibleSteps.firstIndex(of: step) ?? 0
@@ -346,6 +376,15 @@ struct OnboardingView: View {
             value *= 1000
         }
         return value
+    }
+
+    private var displayedUsageAmountBinding: Binding<Double> {
+        Binding<Double>(
+            get: { displayedUsageAmount },
+            set: { newValue in
+                dailyAmount = roundedDailyAmount(convertDisplayedAmountToDaily(newValue))
+            }
+        )
     }
 
     private var displayedUsagePresets: [Double] {
@@ -551,39 +590,84 @@ struct OnboardingView: View {
                 header
 
                 ScrollViewReader { proxy in
-                    ScrollView(showsIndicators: false) {
-                        Group {
-                            switch step {
-                            case .welcome:
-                                welcomeStep
-                            case .consumable:
-                                consumableStep
-                            case .dailyAmount:
-                                dailyStep
-                            case .unitPrice:
-                                priceStep
-                            case .quantityPerPurchase:
-                                if pricingMode == .package {
-                                    quantityStep
-                                } else {
-                                    summaryStep
-                                }
+                    GeometryReader { viewportProxy in
+                        ScrollView(showsIndicators: false) {
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .preference(
+                                        key: OnboardingScrollOffsetPreferenceKey.self,
+                                        value: proxy.frame(in: .named("onboardingScrollArea")).minY
+                                    )
+                            }
+                            .frame(height: 0)
+
+                            Group {
+                                switch step {
+                                case .welcome:
+                                    welcomeStep
+                                case .consumable:
+                                    consumableStep
+                                case .dailyAmount:
+                                    dailyStep
+                                case .unitPrice:
+                                    priceStep
+                                case .quantityPerPurchase:
+                                    if pricingMode == .package {
+                                        quantityStep
+                                    } else {
+                                        summaryStep
+                                    }
                             case .summary:
                                 summaryStep
                             }
                         }
-                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+                        .transition(stepTransition)
                         .animation(.spring(response: 0.35, dampingFraction: 0.88), value: step)
                         .padding(.top, contentTopSpacing)
                         .padding(.bottom, bottomBarReservedHeight)
-                    }
-                    .onChange(of: scrollTarget) { _, target in
-                        guard let target else { return }
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            proxy.scrollTo(target, anchor: .center)
+                            .background(
+                                GeometryReader { contentProxy in
+                                    Color.clear.preference(
+                                        key: OnboardingScrollContentHeightPreferenceKey.self,
+                                        value: contentProxy.size.height
+                                    )
+                                }
+                            )
+                        }
+                        .scrollDisabled(!shouldEnableScroll)
+                        .onChange(of: scrollTarget) { _, target in
+                            guard let target else { return }
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo(target, anchor: .center)
+                            }
+                        }
+                        .mask {
+                            if shouldEnableScroll {
+                                VStack(spacing: 0) {
+                                    LinearGradient(
+                                        colors: [.clear, .black],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                    .frame(height: 28)
+
+                                    Rectangle()
+                                        .fill(.black)
+                                }
+                            } else {
+                                Rectangle()
+                                    .fill(.black)
+                            }
+                        }
+                        .onAppear {
+                            scrollViewportHeight = viewportProxy.size.height
+                        }
+                        .onChange(of: viewportProxy.size.height) { _, newHeight in
+                            scrollViewportHeight = newHeight
                         }
                     }
                 }
+                .coordinateSpace(name: "onboardingScrollArea")
             }
             .padding(.horizontal, 20)
         }
@@ -607,6 +691,12 @@ struct OnboardingView: View {
         .safeAreaInset(edge: .bottom) {
             bottomBar
                 .padding(.horizontal, 20)
+        }
+        .onPreferenceChange(OnboardingScrollOffsetPreferenceKey.self) { value in
+            scrollContentOffset = value
+        }
+        .onPreferenceChange(OnboardingScrollContentHeightPreferenceKey.self) { value in
+            scrollBodyHeight = value
         }
     }
 
@@ -657,13 +747,31 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(.top, 10)
+        .padding(.bottom, 6)
+        .background(
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(hasScrolledUnderChrome ? 1 : 0)
+
+                LinearGradient(
+                    colors: [
+                        Color.blue.opacity(hasScrolledUnderChrome ? 0.22 : 0),
+                        Color.cyan.opacity(hasScrolledUnderChrome ? 0.08 : 0)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+            .ignoresSafeArea(edges: .top)
+        )
     }
 
     private var welcomeStep: some View {
         VStack(alignment: .leading, spacing: sectionSpacing) {
             stepTitle(
                 "Quick start",
-                subtitle: "Track habits, money, progress, and rewards in one flow."
+                subtitle: "Track consume habits, money, progress, and rewards in one flow."
             )
 
             Text("This takes less than a minute.")
@@ -813,15 +921,30 @@ struct OnboardingView: View {
                 }
                 .pickerStyle(.segmented)
                 .tint(Color("ButtonPrimaryBackground"))
+            }
 
-                if isMassInputToggleVisible {
-                    Picker("Mass unit", selection: $massDisplayUnit) {
-                        ForEach(MassDisplayUnit.allCases) { unit in
-                            Text(unit.rawValue.uppercased()).tag(unit)
+            if isMassInputToggleVisible {
+                inputRow(label: "Amount") {
+                    HStack(spacing: 10) {
+                        TextField(
+                            "e.g. 1.5",
+                            value: displayedUsageAmountBinding,
+                            format: .number.precision(.fractionLength(0...2))
+                        )
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(Color("TextPrimary"))
+
+                        Spacer()
+
+                        Picker("Mass unit", selection: $massDisplayUnit) {
+                            ForEach(MassDisplayUnit.allCases) { unit in
+                                Text(unit.rawValue.uppercased()).tag(unit)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .tint(Color("TextPrimary"))
                     }
-                    .pickerStyle(.segmented)
-                    .tint(Color("ButtonPrimaryBackground"))
                 }
             }
 
@@ -1115,7 +1238,7 @@ struct OnboardingView: View {
                     LinearGradient(
                         colors: [
                             Color("Background").opacity(0),
-                            Color("Background").opacity(0.94),
+                            Color("Background").opacity(hasScrolledUnderChrome ? 0.78 : 0.94),
                             Color("Background")
                         ],
                         startPoint: .top,
@@ -1123,6 +1246,17 @@ struct OnboardingView: View {
                     )
                     .ignoresSafeArea()
                 )
+                .overlay {
+                    LinearGradient(
+                        colors: [
+                            Color.blue.opacity(hasScrolledUnderChrome ? 0.20 : 0),
+                            Color.cyan.opacity(hasScrolledUnderChrome ? 0.08 : 0)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .allowsHitTesting(false)
+                }
             )
         }
 
@@ -1154,20 +1288,12 @@ struct OnboardingView: View {
                 } label: {
                     Label("Sign In", systemImage: "person.crop.circle.badge.checkmark")
                         .font(isWelcomeStep ? .headline : .subheadline.weight(.semibold))
+                        .foregroundStyle(isWelcomeStep ? Color("TextOnAccent") : Color("ButtonSecondaryText"))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, isWelcomeStep ? 13 : 9)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(isWelcomeStep ? Color("ButtonPrimaryBackground") : Color("ButtonSecondaryBackground"))
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isWelcomeStep
-                            ? .white.opacity(0.9)
-                            : Color("BorderStrong").opacity(0.7),
-                            lineWidth: 1
-                        )
-                )
             }
             .padding(.top, 10)
             .padding(.bottom, 10)
@@ -1294,6 +1420,7 @@ struct OnboardingView: View {
     private func goBack() {
         guard let idx = visibleSteps.firstIndex(of: step), idx > 0 else { return }
         let previous = visibleSteps[idx - 1]
+        isForwardNavigation = false
         withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
             step = previous
         }
@@ -1306,6 +1433,7 @@ struct OnboardingView: View {
 
         guard let idx = visibleSteps.firstIndex(of: step), idx + 1 < visibleSteps.count else { return }
         let next = visibleSteps[idx + 1]
+        isForwardNavigation = true
         withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
             step = next
         }
@@ -1393,4 +1521,20 @@ struct OnboardingView: View {
 
 #Preview {
     OnboardingView(initialProfile: nil, onChooseAuth: { _, _ in })
+}
+
+private struct OnboardingScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct OnboardingScrollContentHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
 }
