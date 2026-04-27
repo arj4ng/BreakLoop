@@ -105,6 +105,12 @@ final class FirestoreTrackingRepository:
             .setData(consumableItemData(item), merge: true)
     }
 
+    func saveConsumableItem(_ item: ConsumableItem, scope: FirestoreAccountScope) async throws {
+        try await consumableItemsCollection(userId: item.userId, scope: scope)
+            .document(item.id)
+            .setData(consumableItemData(item), merge: true)
+    }
+
     func archiveConsumableItem(userId: String, itemId: String) async throws {
         // soft archive damit history bleibt
         try await consumableItemsCollection(userId: userId)

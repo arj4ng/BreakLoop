@@ -22,11 +22,22 @@ import SwiftUI
 
 // screen leicht halten, komplexe logic ins viewmodel
 struct DashboardView: View {
+    let onSignOut: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Dashboard")
-                .appTypography(AppTypography.title1)
-                .foregroundStyle(AppColors.textPrimary)
+            HStack {
+                Text("Dashboard")
+                    .appTypography(AppTypography.title1)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                Spacer()
+
+                Button("Sign Out") {
+                    onSignOut()
+                }
+                .buttonStyle(.bordered)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(24)
@@ -35,5 +46,5 @@ struct DashboardView: View {
     }
 }
 #Preview {
-    DashboardView()
+    DashboardView(onSignOut: {})
 }

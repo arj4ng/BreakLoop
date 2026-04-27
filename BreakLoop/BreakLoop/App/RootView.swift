@@ -33,8 +33,20 @@ struct RootView: View {
     // start immer im loading state bis auth/profile geprüft wurde
     @State private var route: Route = .loading
 
+    // onboarding steuert ob auth als login, register oder guest startet
+    @State private var authEntryIntent: AuthEntryIntent = .signIn
+
     // aktive uid im root für spätere dependency injection
     @State private var userId: String?
+
+    // aktuelle session für onboarding save scope
+    @State private var currentSession: AuthUserSession?
+
+    // aktuelles profil für onboarding prefill
+    @State private var currentProfile: UserProfile?
+
+    // draft aus onboarding wird nach erstem login auf user profil geschrieben
+    @State private var pendingOnboardingDraft: OnboardingDraft?
 
     // auth service prüft session und guest fallback
     private let authService: AuthServiceProtocol = FirebaseAuthService()
@@ -49,7 +61,7 @@ struct RootView: View {
                 ProgressView()
 
             case .auth:
-                AuthView(authService: authService) {
+                AuthView(authService: authService, onAuthenticated: {
 
                     // nach auth change route erneut auflösen
                     route = .loading
@@ -57,37 +69,20 @@ struct RootView: View {
                     Task {
                         await resolveInitialRoute()
                     }
-                }
+                }, initialIntent: authEntryIntent)
 
             case .onboarding:
-                VStack(spacing: 12) {
-                    Text("onboarding flow placeholder")
-
-                    Button("Continue to app") {
-                        route = .app
+                OnboardingView(
+                    initialProfile: currentProfile,
+                    onChooseAuth: { intent, draft in
+                        completeOnboarding(intent: intent, draft: draft)
                     }
-                    .buttonStyle(.bordered)
-
-                    Button("Sign out") {
-                        if authService.isAnonymous {
-
-                            // guest logout bleibt auf gleicher device session
-                            route = .auth
-                        } else {
-                            do {
-                                try authService.signOut()
-                                route = .auth
-                            } catch {
-                                route = .auth
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding(20)
+                )
 
             case .app:
-                DashboardView()
+                DashboardView(onSignOut: {
+                    handleSignOut()
+                })
             }
         }
         .task {
@@ -98,23 +93,25 @@ struct RootView: View {
     }
 
     private func resolveInitialRoute() async {
+        guard let session = authService.currentSession() else {
+
+            // default für nicht eingeloggte user immer onboarding
+            route = .onboarding
+            return
+        }
+
         do {
-
-            // stellt sicher dass wir eine session haben guest oder normal
-            let session = try await authService.signInAnonymouslyIfNeeded()
             userId = session.userId
+            currentSession = session
 
-            // legt users/{uid} automatisch an falls noch nicht vorhanden
+            // legt profil doc an und lädt state
             let profile = try await ensureUserProfileDocument(for: session)
 
-            // profil entscheidet ob onboarding bereits abgeschlossen ist
-            if let profile, profile.onboardingCompleted {
-                route = .app
-            } else {
+            // onboarding draft aus first-open flow jetzt auf account schreiben
+            let finalProfile = try await applyPendingOnboardingIfNeeded(baseProfile: profile, session: session)
+            currentProfile = finalProfile
 
-                // guest und normale user ohne onboarding gehen beide ins onboarding
-                route = .onboarding
-            }
+            route = .app
         } catch {
 
             // bei fehler sicher auf auth fallback gehen
@@ -162,6 +159,70 @@ struct RootView: View {
 
         try await userProfileRepository.saveUserProfile(profile, scope: scope)
         return profile
+    }
+
+    private func completeOnboarding(intent: AuthEntryIntent, draft: OnboardingDraft?) {
+        // onboarding nur local abschließen, account save passiert nach auth
+        pendingOnboardingDraft = draft
+        authEntryIntent = intent
+        route = .auth
+    }
+
+    private func applyPendingOnboardingIfNeeded(baseProfile: UserProfile?, session: AuthUserSession) async throws -> UserProfile? {
+        guard let base = baseProfile else { return nil }
+        guard let draft = pendingOnboardingDraft else { return base }
+
+        let scope: FirestoreAccountScope = session.isAnonymous ? .guest : .registered
+        let finalName = draft.displayName.isEmpty ? base.displayName : draft.displayName
+
+        let updatedProfile = UserProfile(
+            id: base.id,
+            email: session.email,
+            displayName: finalName,
+            baselineDailyConsume: draft.baselineDailyConsume,
+            baselineCostPerConsume: draft.baselineCostPerConsume,
+            isGuestAccount: session.isAnonymous,
+            onboardingCompleted: true,
+            createdAt: base.createdAt,
+            updatedAt: .now
+        )
+
+        try await userProfileRepository.saveUserProfile(updatedProfile, scope: scope)
+
+        if draft.addFirstConsumable, !draft.firstConsumableName.isEmpty {
+            let item = ConsumableItem(
+                id: UUID().uuidString,
+                userId: session.userId,
+                name: draft.firstConsumableName,
+                category: draft.firstConsumableCategory,
+                defaultUnit: draft.firstConsumableUnit,
+                defaultAmountPerConsume: 1,
+                defaultCostPerConsume: draft.baselineCostPerConsume,
+                note: nil,
+                createdAt: .now,
+                updatedAt: .now,
+                isArchived: false
+            )
+
+            try await userProfileRepository.saveConsumableItem(item, scope: scope)
+        }
+
+        pendingOnboardingDraft = nil
+        return updatedProfile
+    }
+
+    private func handleSignOut() {
+        do {
+            try authService.signOut()
+            currentSession = nil
+            currentProfile = nil
+            userId = nil
+            authEntryIntent = .signIn
+            route = .auth
+        } catch {
+            authEntryIntent = .signIn
+            route = .auth
+        }
     }
 }
 

@@ -17,6 +17,13 @@
 import SwiftUI
 
 
+enum AuthEntryIntent {
+    case signIn
+    case register
+    case guest
+}
+
+
 // MARK: ┏━ [01 APP FLOW] AuthView
 // MARK: ┗━ minimaler auth screen für login plus register navigation
 
@@ -27,6 +34,9 @@ struct AuthView: View {
 
     // callback informiert root dass auth state sich geändert hat
     let onAuthenticated: () -> Void
+
+    // intent erlaubt onboarding gesteuerten einstieg
+    let initialIntent: AuthEntryIntent
 
     // migration repo prüft und migriert guest daten falls nötig
     private let migrationRepository = FirestoreTrackingRepository()
@@ -50,6 +60,9 @@ struct AuthView: View {
     // pending creds nach prompt confirmation
     @State private var pendingSignInEmail: String = ""
     @State private var pendingSignInPassword: String = ""
+
+    // schützt vor wiederholtem auto trigger bei rerender
+    @State private var didApplyInitialIntent: Bool = false
 
     var body: some View {
         ZStack {
@@ -205,6 +218,9 @@ struct AuthView: View {
         } message: {
             Text("Guest data will be replaced by existing account data. If the existing account is empty, your guest data will be migrated.")
         }
+        .task {
+            await applyInitialIntentIfNeeded()
+        }
     }
 
     @ViewBuilder
@@ -320,8 +336,23 @@ struct AuthView: View {
 
         isLoading = false
     }
+
+    @MainActor
+    private func applyInitialIntentIfNeeded() async {
+        guard !didApplyInitialIntent else { return }
+        didApplyInitialIntent = true
+
+        switch initialIntent {
+        case .signIn:
+            return
+        case .register:
+            showsRegisterView = true
+        case .guest:
+            await continueAsGuest()
+        }
+    }
 }
 
 #Preview {
-    AuthView(authService: FirebaseAuthService(), onAuthenticated: {})
+    AuthView(authService: FirebaseAuthService(), onAuthenticated: {}, initialIntent: .signIn)
 }
