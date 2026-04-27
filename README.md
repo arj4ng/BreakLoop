@@ -36,17 +36,21 @@ Genau da setzt BreakLoop an.
 ## Was aktuell drin ist
 
 <ul>
-  <li><code>Dashboard</code> → Kostenüberblick + erste Insights</li>
-  <li><code>Expenses</code> → Konsum und Purchase Einträge</li>
-  <li><code>ConsumptionPlan</code> → Reduktionsziel oder Target Datum</li>
-  <li><code>Rewards</code> → Meilensteine sichtbar machen</li>
-  <li><code>Settings</code> → Preis und Basiswerte anpassen</li>
+  <li><code>Dashboard</code> → Scaffold + Platz für Live Insights</li>
+  <li><code>Expenses</code> → Scaffold für Consume und Purchase Flow</li>
+  <li><code>ConsumptionPlan</code> → Scaffold für Reduktionsziele</li>
+  <li><code>Rewards</code> → Scaffold für Reward Anzeige</li>
+  <li><code>Settings</code> → Scaffold für Profile und App Settings</li>
+  <li><code>Shared Models</code> → User, Consumable, ConsumeEntry, PurchaseEntry, Rewards, Stats</li>
+  <li><code>CalculationService</code> → Kosten, Average, Saved Money, Reward Punkte, Consume free Checks</li>
+  <li><code>Firebase</code> → Auth + Firestore + Messaging integriert und konfiguriert</li>
 </ul>
 
 ## Tech und Struktur
 
 - iOS + SwiftUI
 - MVVM + Service Layer
+- Firebase (Auth, Firestore, Messaging)
 - Feature first Struktur
 
 ```text
@@ -85,13 +89,28 @@ BreakLoop/
   </tr>
   <tr>
     <td>Domain Modelle</td>
-    <td>✅ Angelegt</td>
-    <td>Profile, Entries, Goals vorhanden</td>
+    <td>✅ Fertig</td>
+    <td>Generische Konsum Modelle inkl. Stats und Rewards stehen</td>
   </tr>
   <tr>
-    <td>Expense Flow</td>
+    <td>Calculation Engine</td>
+    <td>✅ Fertig</td>
+    <td>Average, Cost, Saved Money und Reward Logik implementiert</td>
+  </tr>
+  <tr>
+    <td>Firebase Setup</td>
+    <td>✅ Fertig</td>
+    <td>SDK eingebunden, plist gesetzt, <code>FirebaseApp.configure()</code> aktiv</td>
+  </tr>
+  <tr>
+    <td>Repository Implementierung</td>
     <td>🟡 In Arbeit</td>
-    <td>Nächster Fokus für echte Daten</td>
+    <td>Firestore CRUD als nächster konkreter Schritt</td>
+  </tr>
+  <tr>
+    <td>UI Umsetzung</td>
+    <td>⏳ Geplant</td>
+    <td>Views bleiben absichtlich noch Scaffold only</td>
   </tr>
 </table>
 
@@ -109,23 +128,23 @@ BreakLoop/
     <td>Grundstruktur, Module, Basis Design System</td>
   </tr>
   <tr>
-    <td><strong>2 · Expense Tracking</strong></td>
+    <td><strong>2 · Core Tracking Engine</strong></td>
+    <td>✅ Fertig</td>
+    <td>Modelle + Berechnungen für Konsum, Kosten, Ersparnis und Rewards</td>
+  </tr>
+  <tr>
+    <td><strong>3 · Firebase Data Layer</strong></td>
     <td>🟡 Nächster Schritt</td>
-    <td>Konsum und Purchase Eingabe + Kostenlogik</td>
+    <td>Auth Flow und Firestore Repositories mit echten Daten</td>
   </tr>
   <tr>
-    <td><strong>3 · Konsum Plan</strong></td>
+    <td><strong>4 · Entry Flows + Dashboard UI</strong></td>
     <td>⏳ Geplant</td>
-    <td>Ziele setzen und Fortschritt tracken</td>
+    <td>Consume/Purchase Eingabe und Dashboard mit Live Werten</td>
   </tr>
   <tr>
-    <td><strong>4 · Rewards</strong></td>
+    <td><strong>5 · Rewards + Insights + Polish</strong></td>
     <td>⏳ Geplant</td>
-    <td>Meilensteine und sichtbare Belohnung</td>
-  </tr>
-  <tr>
-    <td><strong>5 · Insights und Polish</strong></td>
-    <td>⏳ Geplant</td>
-    <td>Bessere Auswertung, UX Feinschliff</td>
+    <td>Streaks, Rewards Screen, bessere Auswertung, UX Feinschliff</td>
   </tr>
 </table>
