@@ -38,7 +38,7 @@ Genau da setzt BreakLoop an.
 <ul>
   <li><code>Onboarding Flow</code> → Mehrstufig, generisch für verschiedene Konsumtypen, mit Cost/Usage Baseline</li>
   <li><code>Auth Flow</code> → Sign in, Register, Guest mit Routing über Root Flow</li>
-  <li><code>Dashboard</code> → Platzhalter Screen mit Sign out und Flow Integration</li>
+  <li><code>Dashboard</code> → Erste Live Übersicht mit KPIs, Sign out und Flow Integration</li>
   <li><code>Shared Models</code> → User, Consumable, ConsumeEntry, PurchaseEntry, Rewards, Stats</li>
   <li><code>CalculationService</code> → Kosten, Durchschnitt, Ersparnis, Reward Logik inkl. Bonus Dedupe und Unit Mapping</li>
   <li><code>Firestore Repositories</code> → CRUD für Profile, Consumables, ConsumeEntries, PurchaseEntries, Rewards</li>
@@ -113,8 +113,8 @@ BreakLoop/
   </tr>
   <tr>
     <td>Feature Screens UI</td>
-    <td>⏳ Geplant</td>
-    <td>Dashboard, Expenses, Rewards, Settings und Plan Screens als nächster Block</td>
+    <td>🟡 In Arbeit</td>
+    <td>Dashboard erster Stand, weitere Feature Screens folgen</td>
   </tr>
 </table>
 
@@ -148,8 +148,8 @@ BreakLoop/
   </tr>
   <tr>
     <td><strong>5 · Entry Flows + Dashboard UI</strong></td>
-    <td>⏳ Geplant</td>
-    <td>Consume/Purchase Eingabe, Dashboard mit Live Werten, danach Rewards/Insights Polish</td>
+    <td>🟡 In Arbeit</td>
+    <td>Consume/Purchase Eingabe, Dashboard Live Werte, danach Rewards/Insights Polish</td>
   </tr>
 </table>
 
@@ -158,3 +158,4 @@ BreakLoop/
 - Onboarding UX finalisieren (Flow ohne harte Sprünge, klare CTA am Ende)
 - Register/SignIn sauber vom Onboarding aus öffnen und Datenübergabe stabil halten
 - Erste echte Entry Flows anbinden (<code>ConsumeEntry</code> / <code>PurchaseEntry</code>)
+- Dashboard Aktionen mit den Entry Flows verbinden
