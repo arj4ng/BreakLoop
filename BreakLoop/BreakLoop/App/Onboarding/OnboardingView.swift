@@ -314,6 +314,7 @@ struct OnboardingView: View {
 
     let initialProfile: UserProfile?
     let onChooseAuth: (AuthEntryIntent, OnboardingDraft?) -> Void
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var step: Step = .welcome
 
@@ -762,6 +763,7 @@ struct OnboardingView: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                 }
+                .hapticTap(.light)
                 .buttonStyle(.plain)
                 .foregroundStyle(Color("TextSecondary"))
                 .background(
@@ -857,15 +859,6 @@ struct OnboardingView: View {
             }
             .font(.footnote)
             .foregroundStyle(Color("TextSecondary"))
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                    .fill(Color("Surface").opacity(0.68))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
-                            .stroke(Color("Border").opacity(0.22), lineWidth: 1)
-                    )
-            )
 
         }
     }
@@ -911,6 +904,7 @@ struct OnboardingView: View {
                                 .fill(selectedType == type ? Color("ButtonPrimaryBackground") : Color("Surface").opacity(0.72))
                         )
                     }
+                    .hapticTap(.light)
                     .buttonStyle(.plain)
                 }
             }
@@ -1117,6 +1111,7 @@ struct OnboardingView: View {
                     Menu {
                         ForEach(CurrencyOption.allCases) { currency in
                             Button(currency.rawValue) {
+                                HapticService.selection()
                                 selectedCurrencyCode = currency.rawValue
                             }
                         }
@@ -1312,6 +1307,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
                     }
+                    .hapticTap(.medium)
                     .buttonStyle(.borderedProminent)
                     .tint(Color("ButtonPrimaryBackground"))
                     .clipShape(Capsule())
@@ -1321,11 +1317,13 @@ struct OnboardingView: View {
                     } label: {
                         Label("Continue as Guest", systemImage: "person.crop.circle.badge.questionmark")
                             .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(summaryGuestText)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                     }
+                    .hapticTap(.medium)
                     .buttonStyle(.borderedProminent)
-                    .tint(Color("ButtonSecondaryBackground"))
+                    .tint(summaryGuestTint)
                     .clipShape(Capsule())
                 }
                 .padding(.top, 10)
@@ -1344,6 +1342,7 @@ struct OnboardingView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                 }
+                .hapticTap(.medium)
                 .buttonStyle(.borderedProminent)
                 .tint(Color("ButtonPrimaryBackground"))
                 .opacity(isCurrentStepValid ? 1 : 0.62)
@@ -1359,14 +1358,28 @@ struct OnboardingView: View {
                 Button {
                     onChooseAuth(.signIn, nil)
                 } label: {
-                    Label("Sign In", systemImage: "person.crop.circle.badge.checkmark")
-                        .font(isWelcomeStep ? .headline : .subheadline.weight(.semibold))
-                        .foregroundStyle(isWelcomeStep ? Color("TextOnAccent") : Color("ButtonSecondaryText"))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, isWelcomeStep ? 13 : 9)
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.crop.circle.badge.checkmark")
+                            .font(.subheadline.weight(.semibold))
+
+                        Text("Sign In")
+                            .font(isWelcomeStep ? .headline : .subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(isWelcomeStep ? Color("TextOnAccent") : compactSignInText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, isWelcomeStep ? 13 : 9)
                 }
+                .hapticTap(isWelcomeStep ? .medium : .light)
                 .buttonStyle(.borderedProminent)
-                .tint(isWelcomeStep ? Color("ButtonPrimaryBackground") : Color("ButtonSecondaryBackground"))
+                .tint(isWelcomeStep ? Color("ButtonPrimaryBackground") : compactSignInFill)
+                .overlay(
+                    Capsule()
+                        .stroke(isWelcomeStep ? Color.clear : compactSignInBorder, lineWidth: 1)
+                )
+                .shadow(color: isWelcomeStep ? Color.black.opacity(0.18) : Color.clear, radius: 10, y: 4)
+                .opacity(isWelcomeStep ? 1 : 0.92)
+                .scaleEffect(isWelcomeStep ? 1 : 0.985)
+                .animation(.easeInOut(duration: 0.22), value: isWelcomeStep)
             }
             .padding(.top, 10)
             .padding(.bottom, 10)
@@ -1376,10 +1389,34 @@ struct OnboardingView: View {
     private var primaryCTA: String {
         switch step {
         case .welcome:
-            return "Start setup"
+            return "Get Started"
         default:
             return "Next"
         }
+    }
+
+    private var compactSignInFill: Color {
+        colorScheme == .light
+            ? Color("SurfaceElevated").opacity(0.94)
+            : Color("ButtonSecondaryBackground").opacity(0.8)
+    }
+
+    private var compactSignInBorder: Color {
+        colorScheme == .light
+            ? Color("BorderStrong").opacity(0.55)
+            : Color("Border").opacity(0.45)
+    }
+
+    private var compactSignInText: Color {
+        colorScheme == .light ? Color("TextSecondary") : Color("ButtonSecondaryText")
+    }
+
+    private var summaryGuestTint: Color {
+        colorScheme == .light ? Color("BrandAccent") : Color("ButtonSecondaryBackground")
+    }
+
+    private var summaryGuestText: Color {
+        colorScheme == .light ? Color("TextOnAccent") : Color("ButtonSecondaryText")
     }
 
     @ViewBuilder
@@ -1456,6 +1493,7 @@ struct OnboardingView: View {
                         .fill(selected ? Color("ButtonPrimaryBackground") : Color("Surface").opacity(0.76))
                 )
         }
+        .hapticTap(.light)
         .buttonStyle(.plain)
     }
 
@@ -1475,6 +1513,7 @@ struct OnboardingView: View {
                         )
                 )
         }
+        .hapticTap(.light)
         .buttonStyle(.plain)
     }
 

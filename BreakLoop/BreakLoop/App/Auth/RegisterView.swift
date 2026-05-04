@@ -91,7 +91,10 @@ struct RegisterView: View {
                         }
 
                         Button {
-                            Task { await register() }
+                            Task {
+                                // button action ist sync, firebase register läuft async
+                                await register()
+                            }
                         } label: {
                             Label("Create account", systemImage: "checkmark.circle.fill")
                                 .font(.headline)
@@ -99,6 +102,7 @@ struct RegisterView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                         }
+                        .hapticTap(.medium)
                         .buttonStyle(.borderedProminent)
                         .tint(Color("ButtonPrimaryBackground"))
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -118,12 +122,14 @@ struct RegisterView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") {
+                        HapticService.selection()
                         if let onClose {
                             onClose()
                         } else {
                             dismiss()
                         }
                     }
+                    .hapticTap(.light)
                 }
             }
         }
@@ -167,6 +173,7 @@ struct RegisterView: View {
             )
     }
 
+    // @MainActor für ui state; async wartet auf firebase signup/linking
     @MainActor
     private func register() async {
 
@@ -211,12 +218,14 @@ struct RegisterView: View {
         isLoading = false
     }
 
+    // alte firebase callback api wird hier in async/await übersetzt
     private func updateCurrentUserDisplayName(_ name: String) async throws {
         guard let user = Auth.auth().currentUser else { return }
 
         let request = user.createProfileChangeRequest()
         request.displayName = name
 
+        // continuation macht aus firebase callback ein awaitbares ergebnis
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             request.commitChanges { error in
                 if let error {

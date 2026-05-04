@@ -99,6 +99,7 @@ struct AuthView: View {
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
                             }
+                            .hapticTap(.light)
                             .buttonStyle(.plain)
                             .foregroundStyle(Color("TextSecondary"))
                             .background(
@@ -165,7 +166,10 @@ struct AuthView: View {
 
                     VStack(spacing: 10) {
                         Button {
-                            Task { await handlePrimaryAuthAction() }
+                            Task {
+                                // button action selbst ist sync, firebase login läuft async
+                                await handlePrimaryAuthAction()
+                            }
                         } label: {
                             Label("Sign in", systemImage: "arrow.right.circle.fill")
                                 .font(.headline)
@@ -173,6 +177,7 @@ struct AuthView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                         }
+                        .hapticTap(.medium)
                         .tint(Color("ButtonPrimaryBackground"))
                         .buttonStyle(.borderedProminent)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -197,9 +202,15 @@ struct AuthView: View {
             .safeAreaPadding(.top, 8)
         }
         .alert("Existing account found", isPresented: $showsGuestDataDecisionPrompt) {
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                HapticService.selection()
+            }
             Button("Continue") {
-                Task { await completeSignInWithGuestPolicy() }
+                HapticService.selection()
+                Task {
+                    // nach bestätigung guest daten sichern und account login starten
+                    await completeSignInWithGuestPolicy()
+                }
             }
         } message: {
             Text("Guest data will be replaced by existing account data. If the existing account is empty, your guest data will be migrated.")
@@ -238,6 +249,7 @@ struct AuthView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
+    // @MainActor hält loading/error state auf ui thread; async wartet auf firebase
     @MainActor
     private func handlePrimaryAuthAction() async {
         guard !email.isEmpty, !password.isEmpty else { return }
@@ -269,6 +281,7 @@ struct AuthView: View {
         isLoading = false
     }
 
+    // async weil guest daten erst exportiert und dann evtl migriert werden
     @MainActor
     private func completeSignInWithGuestPolicy() async {
         guard !pendingSignInEmail.isEmpty, !pendingSignInPassword.isEmpty else { return }
@@ -311,6 +324,7 @@ struct AuthView: View {
         isLoading = false
     }
 
+    // guest login ist firebase call, deshalb async
     @MainActor
     private func continueAsGuest() async {
         isLoading = true
@@ -328,6 +342,7 @@ struct AuthView: View {
         isLoading = false
     }
 
+    // initial intent kann direkt guest login starten
     @MainActor
     private func applyInitialIntentIfNeeded() async {
         guard !didApplyInitialIntent else { return }

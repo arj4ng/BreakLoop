@@ -63,6 +63,7 @@ struct RootView: View {
                     appState.authOpenedFromOnboarding = false
 
                     Task {
+                        // Task startet async arbeit aus normalem button callback
                         await resolveInitialRoute()
                     }
                 }, initialIntent: authEntryIntent, canGoBackToOnboarding: appState.authOpenedFromOnboarding, onBackToOnboarding: {
@@ -79,9 +80,17 @@ struct RootView: View {
                 )
 
             case .app:
-                DashboardView(onSignOut: {
-                    handleSignOut()
-                })
+                if let session = currentSession {
+                    DashboardView(
+                        userId: session.userId,
+                        scope: session.isAnonymous ? .guest : .registered,
+                        onSignOut: {
+                            handleSignOut()
+                        }
+                    )
+                } else {
+                    ProgressView()
+                }
             }
         }
         .task {
@@ -91,11 +100,12 @@ struct RootView: View {
         }
         .sheet(isPresented: $showsOnboardingRegisterSheet) {
             RegisterView(authService: authService, onRegistered: {
-                    showsOnboardingRegisterSheet = false
+                showsOnboardingRegisterSheet = false
                 appState.route = .loading
                 appState.authOpenedFromOnboarding = false
 
                 Task {
+                    // route braucht firebase/profile daten, deshalb async neu laden
                     await resolveInitialRoute()
                 }
             }, onClose: {
@@ -111,6 +121,7 @@ struct RootView: View {
                     appState.authOpenedFromOnboarding = false
 
                     Task {
+                        // auth modal fertig, root status danach neu berechnen
                         await resolveInitialRoute()
                     }
                 },
@@ -123,6 +134,7 @@ struct RootView: View {
         }
     }
 
+    // async weil firebase/profile laden nicht sofort fertig ist
     private func resolveInitialRoute() async {
         guard let session = authService.currentSession() else {
 
@@ -152,6 +164,7 @@ struct RootView: View {
         }
     }
 
+    // async throws: firestore lesen/schreiben kann warten und fehlschlagen
     private func ensureUserProfileDocument(for session: AuthUserSession) async throws -> UserProfile? {
         let scope: FirestoreAccountScope = session.isAnonymous ? .guest : .registered
 
@@ -212,6 +225,7 @@ struct RootView: View {
         }
     }
 
+    // async throws: onboarding draft wird nach login in firestore gespeichert
     private func applyPendingOnboardingIfNeeded(baseProfile: UserProfile?, session: AuthUserSession) async throws -> UserProfile? {
         guard let base = baseProfile else { return nil }
         guard let draft = pendingOnboardingDraft else { return base }
