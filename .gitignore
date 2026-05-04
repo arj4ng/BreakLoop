@@ -2,6 +2,10 @@
 **/xcuserdata/
 **/*.xcuserstate
 
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
 # Local planning/docs only
 docs/*
 !docs/assets/
