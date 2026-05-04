@@ -1,3 +1,9 @@
 # Xcode user-specific files
 **/xcuserdata/
 **/*.xcuserstate
+
+# Local planning/docs only
+docs/*
+!docs/assets/
+docs/assets/*
+!docs/assets/breakloop-readme-icon-256.png
