@@ -85,8 +85,12 @@ final class FirestoreTrackingRepository:
     }
 
     func archiveConsumableItem(userId: String, itemId: String) async throws {
+        try await archiveConsumableItem(userId: userId, itemId: itemId, scope: .registered)
+    }
+
+    func archiveConsumableItem(userId: String, itemId: String, scope: FirestoreAccountScope) async throws {
         // soft archive damit history bleibt
-        try await consumableItemsCollection(userId: userId)
+        try await consumableItemsCollection(userId: userId, scope: scope)
             .document(itemId)
             .updateData([
                 "isArchived": true,
@@ -110,14 +114,23 @@ final class FirestoreTrackingRepository:
     }
 
     func saveConsumeEntry(_ entry: ConsumeEntry) async throws {
-        try await consumeEntriesCollection(userId: entry.userId)
+        try await saveConsumeEntry(entry, scope: .registered)
+    }
+
+    func saveConsumeEntry(_ entry: ConsumeEntry, scope: FirestoreAccountScope) async throws {
+        // scope entscheidet zwischen users/{uid} und guestUsers/{uid}
+        try await consumeEntriesCollection(userId: entry.userId, scope: scope)
             .document(entry.id)
             .setData(consumeEntryData(entry), merge: true)
     }
 
     func softDeleteConsumeEntry(userId: String, entryId: String, deletedAt: Date) async throws {
+        try await softDeleteConsumeEntry(userId: userId, entryId: entryId, deletedAt: deletedAt, scope: .registered)
+    }
+
+    func softDeleteConsumeEntry(userId: String, entryId: String, deletedAt: Date, scope: FirestoreAccountScope) async throws {
         // soft delete flags statt hard remove
-        try await consumeEntriesCollection(userId: userId)
+        try await consumeEntriesCollection(userId: userId, scope: scope)
             .document(entryId)
             .updateData([
                 "isDeleted": true,
@@ -142,7 +155,12 @@ final class FirestoreTrackingRepository:
     }
 
     func savePurchaseEntry(_ entry: PurchaseEntry) async throws {
-        try await purchaseEntriesCollection(userId: entry.userId)
+        try await savePurchaseEntry(entry, scope: .registered)
+    }
+
+    func savePurchaseEntry(_ entry: PurchaseEntry, scope: FirestoreAccountScope) async throws {
+        // scope hält guest logs getrennt von registrierten account logs
+        try await purchaseEntriesCollection(userId: entry.userId, scope: scope)
             .document(entry.id)
             .setData(purchaseEntryData(entry), merge: true)
     }

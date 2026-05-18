@@ -27,29 +27,42 @@ import FirebaseFirestore
 final class DashboardViewModel: ObservableObject {
     // @Published informiert SwiftUI wenn dashboard daten neu sind
     @Published private(set) var state: DashboardViewState = .empty
+    @Published private(set) var entryActionMessage: DashboardEntryActionMessage?
 
-    private let userId: String
-    private let scope: FirestoreAccountScope
+    let userId: String
+    let scope: FirestoreAccountScope
     private let realtimeService: DashboardRealtimeServiceProtocol
+    private let entryRepository: DashboardEntryRepositoryProtocol
     private let calculationService: CalculationService
     // firestore listener behalten, damit deinit sie stoppen kann
     private var listeners: [ListenerRegistration] = []
+    private var lastQuickConsumeEntryId: String?
 
     init(
         userId: String,
         scope: FirestoreAccountScope,
         realtimeService: DashboardRealtimeServiceProtocol? = nil,
+        entryRepository: DashboardEntryRepositoryProtocol? = nil,
         calculationService: CalculationService? = nil
     ) {
         self.userId = userId
         self.scope = scope
         self.realtimeService = realtimeService ?? FirestoreDashboardRealtimeService()
+        self.entryRepository = entryRepository ?? FirestoreTrackingRepository()
         self.calculationService = calculationService ?? CalculationService()
     }
 
     deinit {
         listeners.forEach { $0.remove() }
         listeners.removeAll()
+    }
+
+    var selectedItem: ConsumableItem? {
+        state.selectedItem
+    }
+
+    var shouldShowConsumablePicker: Bool {
+        state.activeConsumables.count > 1
     }
 
     // startet realtime nur einmal pro view model
@@ -77,6 +90,83 @@ final class DashboardViewModel: ObservableObject {
     func selectConsumable(id: String) {
         state.selectedConsumableId = id
         recomputeCards()
+    }
+
+    // async: firestore save läuft im hintergrund, ui wartet ohne einzufrieren
+    func quickLogConsume() async {
+        guard let selectedItem else {
+            showMissingConsumableMessage()
+            return
+        }
+
+        let entry = ConsumeEntry(
+            id: UUID().uuidString,
+            userId: userId,
+            consumableItemId: selectedItem.id,
+            timestamp: .now,
+            amount: selectedItem.defaultAmountPerConsume ?? 1,
+            unit: selectedItem.defaultUnit
+        )
+
+        do {
+            try await entryRepository.saveConsumeEntry(entry, scope: scope)
+            lastQuickConsumeEntryId = entry.id
+            entryActionMessage = DashboardEntryActionMessage(text: "Logged Consume", allowsUndo: true)
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    // undo löscht nicht hart, sondern setzt soft-delete flag im gleichen scope
+    func undoLastQuickConsume() async {
+        guard let entryId = lastQuickConsumeEntryId else { return }
+
+        do {
+            try await entryRepository.softDeleteConsumeEntry(
+                userId: userId,
+                entryId: entryId,
+                deletedAt: .now,
+                scope: scope
+            )
+            lastQuickConsumeEntryId = nil
+            entryActionMessage = DashboardEntryActionMessage(text: "Consume removed")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    // purchase sheet sammelt nur preis + menge; rest kommt vom gewählten consumable
+    func savePurchase(price: Decimal, quantity: Double) async {
+        guard let selectedItem else {
+            showMissingConsumableMessage()
+            return
+        }
+
+        let entry = PurchaseEntry(
+            id: UUID().uuidString,
+            userId: userId,
+            consumableItemId: selectedItem.id,
+            purchaseDate: .now,
+            price: price,
+            quantity: quantity,
+            unit: selectedItem.defaultPurchaseUnit ?? selectedItem.defaultUnit
+        )
+
+        do {
+            try await entryRepository.savePurchaseEntry(entry, scope: scope)
+            entryActionMessage = DashboardEntryActionMessage(text: "Purchase saved")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    func showMissingConsumableMessage() {
+        entryActionMessage = DashboardEntryActionMessage(text: "Add a consumable first", isError: true)
+    }
+
+    func dismissEntryActionMessage(id: UUID) {
+        guard entryActionMessage?.id == id else { return }
+        entryActionMessage = nil
     }
 
     // snapshot daten übernehmen und aktive items für ui sortieren

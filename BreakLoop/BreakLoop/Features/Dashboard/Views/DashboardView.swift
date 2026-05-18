@@ -42,6 +42,7 @@ struct DashboardView: View {
     // StateObject hält viewmodel über view refreshes stabil
     @StateObject private var viewModel: DashboardViewModel
     @State private var selectedTab: DashboardTab = .dashboard
+    @State private var isPurchaseSheetPresented = false
     let onSignOut: () -> Void
 
     init(userId: String, scope: FirestoreAccountScope, onSignOut: @escaping () -> Void) {
@@ -54,6 +55,27 @@ struct DashboardView: View {
         .tint(AppColors.accent)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             bottomControls
+        }
+        .overlay(alignment: .bottom) {
+            entryActionToast
+        }
+        .sheet(isPresented: $isPurchaseSheetPresented) {
+            PurchaseEntrySheet(item: viewModel.selectedItem) { price, quantity in
+                Task {
+                    await viewModel.savePurchase(price: price, quantity: quantity)
+                    isPurchaseSheetPresented = false
+                }
+            }
+            .presentationDetents([.height(300)])
+            .presentationDragIndicator(.visible)
+        }
+        .onChange(of: viewModel.entryActionMessage?.id) { _, newId in
+            guard let newId else { return }
+
+            // toast bleibt kurz sichtbar und entfernt nur sich selbst
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                viewModel.dismissEntryActionMessage(id: newId)
+            }
         }
         .task {
             // task läuft beim anzeigen der view und startet realtime listener
@@ -98,25 +120,23 @@ struct DashboardView: View {
     }
 
     private var settingsTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                header(title: "Settings")
-                settingsContent
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
-        }
-        .background(AppColors.background)
+        SettingsView(userId: viewModel.userId, scope: viewModel.scope, onSignOut: onSignOut)
     }
 
     private var bottomControls: some View {
         VStack(spacing: 0) {
             EntryActionDock(
                 onPurchaseTap: {
-                    // placeholder bis purchase entry flow integriert ist
+                    if viewModel.selectedItem == nil {
+                        viewModel.showMissingConsumableMessage()
+                    } else {
+                        isPurchaseSheetPresented = true
+                    }
                 },
                 onConsumeCompleted: {
-                    // placeholder bis consume entry flow integriert ist
+                    Task {
+                        await viewModel.quickLogConsume()
+                    }
                 }
             )
             .padding(.horizontal, 16)
@@ -194,7 +214,7 @@ struct DashboardView: View {
     private var dashboardContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             statusContent
-            consumableTabs
+            consumablePicker
             kpiGrid
             emptyHint
         }
@@ -218,12 +238,12 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private var consumableTabs: some View {
+    private var consumablePicker: some View {
         if viewModel.state.activeConsumables.isEmpty && !viewModel.state.isLoading {
             Text("No consumables yet")
                 .appTypography(AppTypography.headline)
                 .foregroundStyle(AppColors.textPrimary)
-        } else {
+        } else if viewModel.shouldShowConsumablePicker {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(viewModel.state.activeConsumables) { item in
@@ -287,14 +307,6 @@ struct DashboardView: View {
                 Text("Start tracking")
                     .appTypography(AppTypography.headline)
                     .foregroundStyle(AppColors.textPrimary)
-
-                Text("Add your first consume and purchase entries to unlock live insights.")
-                    .appTypography(AppTypography.subheadline)
-                    .foregroundStyle(AppColors.textSecondary)
-
-                Text("Use the bottom dock to log consume or purchase.")
-                    .appTypography(AppTypography.caption1)
-                    .foregroundStyle(AppColors.textSecondary)
             }
             .padding(14)
             .background(AppColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -302,33 +314,112 @@ struct DashboardView: View {
     }
 
     private var detailsContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Entry history")
-                .appTypography(AppTypography.headline)
-                .foregroundStyle(AppColors.textPrimary)
+        VStack(alignment: .leading, spacing: 14) {
+            consumablePicker
 
-            Text("Long-press manage flow will list consume and purchase entries for the selected consumable here.")
-                .appTypography(AppTypography.subheadline)
-                .foregroundStyle(AppColors.textSecondary)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Entry history")
+                    .appTypography(AppTypography.headline)
+                    .foregroundStyle(AppColors.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(AppColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(AppColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private var settingsContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Dashboard settings")
-                .appTypography(AppTypography.headline)
-                .foregroundStyle(AppColors.textPrimary)
+    @ViewBuilder
+    private var entryActionToast: some View {
+        if let message = viewModel.entryActionMessage {
+            HStack(spacing: 10) {
+                Text(message.text)
+                    .appTypography(AppTypography.caption1)
+                    .foregroundStyle(AppColors.textPrimary)
+                    .lineLimit(2)
 
-            Text("Tracking preferences and account actions will live here.")
-                .appTypography(AppTypography.subheadline)
-                .foregroundStyle(AppColors.textSecondary)
+                Spacer(minLength: 8)
+
+                if message.allowsUndo {
+                    Button("Undo") {
+                        Task {
+                            await viewModel.undoLastQuickConsume()
+                        }
+                    }
+                    .hapticTap(.light)
+                    .appTypography(AppTypography.buttonSecondary)
+                    .foregroundStyle(AppColors.accent)
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(AppColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(message.isError ? Color("Danger").opacity(0.55) : AppColors.accentSoft.opacity(0.45), lineWidth: 1)
+            )
+            .padding(.horizontal, 24)
+            .padding(.bottom, 132)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(AppColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct PurchaseEntrySheet: View {
+    let item: ConsumableItem?
+    let onSave: (Decimal, Double) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var priceText = ""
+    @State private var quantityText = ""
+
+    private var parsedPrice: Decimal? {
+        Decimal(string: priceText.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private var parsedQuantity: Double? {
+        Double(quantityText.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private var canSave: Bool {
+        guard let price = parsedPrice, let quantity = parsedQuantity else { return false }
+        return price > 0 && quantity > 0 && item != nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(item?.name ?? "No consumable selected")
+                        .appTypography(AppTypography.headline)
+                }
+
+                Section {
+                    TextField("Price", text: $priceText)
+                        .keyboardType(.decimalPad)
+
+                    TextField("Quantity", text: $quantityText)
+                        .keyboardType(.decimalPad)
+                }
+            }
+            .navigationTitle("New Purchase")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard let parsedPrice, let parsedQuantity else { return }
+                        onSave(parsedPrice, parsedQuantity)
+                    }
+                    .disabled(!canSave)
+                }
+            }
+        }
     }
 }
 #Preview {

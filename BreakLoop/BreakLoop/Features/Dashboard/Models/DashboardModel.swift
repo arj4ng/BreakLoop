@@ -83,3 +83,18 @@ struct DashboardViewState: Hashable {
         !entries.isEmpty || !purchases.isEmpty
     }
 }
+
+// toast payload für entry actions unten im dashboard
+struct DashboardEntryActionMessage: Identifiable, Hashable {
+    let id: UUID
+    let text: String
+    let allowsUndo: Bool
+    let isError: Bool
+
+    init(id: UUID = UUID(), text: String, allowsUndo: Bool = false, isError: Bool = false) {
+        self.id = id
+        self.text = text
+        self.allowsUndo = allowsUndo
+        self.isError = isError
+    }
+}

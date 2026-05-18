@@ -151,6 +151,9 @@ struct RootView: View {
             // legt profil doc an und lädt state
             let profile = try await ensureUserProfileDocument(for: session)
 
+            // linked guest accounts keep uid, but app reads registered root after signup
+            try await migrateLinkedGuestDataIfNeeded(for: session)
+
             // onboarding draft aus first-open flow jetzt auf account schreiben
             let finalProfile = try await applyPendingOnboardingIfNeeded(baseProfile: profile, session: session)
             currentProfile = finalProfile
@@ -207,6 +210,23 @@ struct RootView: View {
 
         try await userProfileRepository.saveUserProfile(profile, scope: scope)
         return profile
+    }
+
+    // wenn guest zu email gelinkt wird, müssen alte guest subcollections in users/{uid}
+    private func migrateLinkedGuestDataIfNeeded(for session: AuthUserSession) async throws {
+        guard session.isAnonymous == false else { return }
+
+        let registeredSnapshot = try await userProfileRepository.exportUserDataSnapshot(userId: session.userId, scope: .registered)
+        guard registeredSnapshot.consumableItems.isEmpty else { return }
+
+        let guestSnapshot = try await userProfileRepository.exportUserDataSnapshot(userId: session.userId, scope: .guest)
+        guard guestSnapshot.hasAnyData else { return }
+
+        try await userProfileRepository.importUserDataSnapshot(
+            guestSnapshot,
+            targetUserId: session.userId,
+            targetScope: .registered
+        )
     }
 
     private func completeOnboarding(intent: AuthEntryIntent, draft: OnboardingDraft?) {

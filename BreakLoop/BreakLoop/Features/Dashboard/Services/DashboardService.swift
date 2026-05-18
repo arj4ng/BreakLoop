@@ -42,6 +42,15 @@ protocol DashboardRealtimeServiceProtocol: DashboardServiceProtocol {
     ) -> [ListenerRegistration]
 }
 
+// dashboard braucht nur entry writes, nicht komplettes repository interface
+protocol DashboardEntryRepositoryProtocol {
+    func saveConsumeEntry(_ entry: ConsumeEntry, scope: FirestoreAccountScope) async throws
+    func savePurchaseEntry(_ entry: PurchaseEntry, scope: FirestoreAccountScope) async throws
+    func softDeleteConsumeEntry(userId: String, entryId: String, deletedAt: Date, scope: FirestoreAccountScope) async throws
+}
+
+extension FirestoreTrackingRepository: DashboardEntryRepositoryProtocol {}
+
 // liest dashboard daten live aus mehreren firestore subcollections
 final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol {
     private let db: Firestore
