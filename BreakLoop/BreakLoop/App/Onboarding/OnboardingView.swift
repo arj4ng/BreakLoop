@@ -29,6 +29,13 @@ struct OnboardingDraft: Sendable {
     var firstConsumablePricingMode: OnboardingPricingMode
     var firstConsumablePurchaseUnit: ConsumeUnit?
     var firstConsumableUnitsPerPurchase: Double?
+    var firstConsumableTrackName: String
+    var firstConsumableTrackAmount: Double
+    var firstConsumableTrackUnit: ConsumeUnit
+    var firstConsumableCostAmountPerTrack: Double
+    var firstConsumableCostUnit: ConsumeUnit
+    var firstConsumablePurchaseName: String
+    var firstConsumableDefaultPurchaseAmount: Double
     var addFirstConsumable: Bool
 }
 
@@ -163,7 +170,7 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes: return .piece
             case .vape: return .dose
-            case .weed: return .gram
+            case .weed: return .piece
             case .alcohol: return .cup
             case .caffeine: return .cup
             case .custom: return .other
@@ -174,7 +181,7 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes: return [.piece, .pack]
             case .vape: return [.dose, .milliliter, .piece, .pack]
-            case .weed: return [.gram, .dose, .other]
+            case .weed: return [.piece, .gram, .dose, .other]
             case .alcohol: return [.cup, .milliliter, .piece, .pack]
             case .caffeine: return [.cup, .milliliter, .piece, .dose]
             case .custom: return UnitOption.allCases
@@ -185,7 +192,7 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes: return .perPiece
             case .vape: return .perSession
-            case .weed: return .perGram
+            case .weed: return .perPiece
             case .alcohol: return .perCup
             case .caffeine: return .perCup
             case .custom: return .custom
@@ -196,8 +203,10 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes, .vape, .alcohol:
                 return .package
-            case .weed, .caffeine, .custom:
+            case .caffeine, .custom:
                 return .unit
+            case .weed:
+                return .package
             }
         }
 
@@ -399,7 +408,36 @@ struct OnboardingView: View {
         if effectiveType == .custom {
             return customUsageMethod
         }
+        if effectiveType == .weed, effectiveUnitOption == .gram {
+            return .perGram
+        }
         return effectiveType.usageMethod
+    }
+
+    private var setupPreset: ConsumableSetupPreset {
+        let presets = ConsumableSetupPresets.consumePresets(for: effectiveType.category)
+        let presetId: String
+
+        switch effectiveType {
+        case .cigarettes:
+            presetId = "cigarette"
+        case .vape:
+            presetId = "vapePuff"
+        case .weed:
+            presetId = effectiveUnitOption == .gram ? "gram" : "joint"
+        case .alcohol:
+            presetId = "beer"
+        case .caffeine:
+            presetId = "coffee"
+        case .custom:
+            presetId = "custom"
+        }
+
+        return presets.first { $0.id == presetId } ?? presets.first ?? ConsumableSetupPresets.fallbackPreset
+    }
+
+    private var purchaseUnitLabel: String {
+        label(for: setupPreset.defaultPurchaseUnit)
     }
 
     private var dailyAmountValue: Double {
@@ -423,6 +461,18 @@ struct OnboardingView: View {
         }
 
         return effectiveUnitOption.label
+    }
+
+    private func label(for unit: ConsumeUnit) -> String {
+        switch unit {
+        case .piece: return "pieces"
+        case .pack: return "packs"
+        case .gram: return "g"
+        case .milliliter: return "ml"
+        case .cup: return "cups"
+        case .dose: return "doses"
+        case .other: return "units"
+        }
     }
 
     private var displayedUsageAmount: Double {
@@ -513,7 +563,7 @@ struct OnboardingView: View {
         case .unit:
             return "What does one \(effectiveUnitOption.label) usually cost?"
         case .package:
-            return "What does \(effectiveType.priceExample) usually cost?"
+            return "What does one \(setupPreset.purchaseName.lowercased()) usually cost?"
         }
     }
 
@@ -527,11 +577,13 @@ struct OnboardingView: View {
     }
 
     private var quantityQuestionTitle: String {
-        "How many units are in one purchase?"
+        "How much is in one purchase?"
     }
 
     private var quantityQuestionSubtitle: String {
         switch effectiveType {
+        case .weed:
+            return "Used to calculate cost per \(setupPreset.trackName)."
         case .cigarettes:
             return "Used to calculate cost per cigarette."
         case .vape:
@@ -539,7 +591,7 @@ struct OnboardingView: View {
         case .alcohol:
             return "Used to calculate cost per drink."
         default:
-            return "Needed to calculate cost per \(effectiveUnitOption.label)."
+            return "Needed to calculate cost per \(setupPreset.trackName)."
         }
     }
 
@@ -557,8 +609,15 @@ struct OnboardingView: View {
         }
     }
 
-    private var monthlySpend: Decimal? {
+    private var costPerConsume: Decimal? {
         guard let unitCost = costPerUnit else { return nil }
+        let amountText = setupPreset.costAmountPerTrackText.replacingOccurrences(of: ",", with: ".")
+        let amount = Decimal(string: amountText) ?? 1
+        return unitCost * amount
+    }
+
+    private var monthlySpend: Decimal? {
+        guard let unitCost = costPerConsume else { return nil }
         let monthlyUnits = Decimal(monthlyUsageEstimate)
         guard monthlyUnits > 0 else { return nil }
         return unitCost * monthlyUnits
@@ -1201,7 +1260,7 @@ struct OnboardingView: View {
             }
 
             Stepper(value: $quantityInPurchase, in: 1...1000, step: 1) {
-                Text("\(prettyNumber(quantityInPurchase)) \(effectiveUnitOption.label) per purchase")
+                Text("\(prettyNumber(quantityInPurchase)) \(purchaseUnitLabel) per purchase")
                     .font(.headline)
                     .foregroundStyle(Color("TextPrimary"))
             }
@@ -1215,7 +1274,7 @@ struct OnboardingView: View {
             .id(quantityAnchorId)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Cost per \(effectiveUnitOption.label)")
+                Text("Cost per \(purchaseUnitLabel)")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color("TextSecondary"))
 
@@ -1223,11 +1282,11 @@ struct OnboardingView: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Color("TextPrimary"))
 
-                Text("Daily baseline")
+                Text("Cost per \(setupPreset.trackName)")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color("TextSecondary"))
 
-                Text(monthlySpend.map { formatCurrency($0 / 30) } ?? "—")
+                Text(costPerConsume.map(formatCurrency) ?? "—")
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Color("BrandAccentStrong"))
             }
@@ -1609,14 +1668,21 @@ struct OnboardingView: View {
             displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
             preferredCurrencyCode: selectedCurrencyCode,
             baselineDailyConsume: max(0, dailyAmountValue),
-            baselineCostPerConsume: costPerUnit,
+            baselineCostPerConsume: costPerConsume,
             firstConsumableName: effectiveConsumableName,
             firstConsumableCategory: effectiveType.category,
-            firstConsumableUnit: effectiveUnitOption.consumeUnit,
+            firstConsumableUnit: setupPreset.trackUnit,
             firstConsumableUsageMethod: effectiveUsageMethod,
             firstConsumablePricingMode: pricingMode == .unit ? .perUnit : .perPurchase,
-            firstConsumablePurchaseUnit: pricingMode == .package ? .pack : nil,
-            firstConsumableUnitsPerPurchase: pricingMode == .package ? quantityValue : nil,
+            firstConsumablePurchaseUnit: setupPreset.defaultPurchaseUnit,
+            firstConsumableUnitsPerPurchase: quantityValue,
+            firstConsumableTrackName: setupPreset.trackName,
+            firstConsumableTrackAmount: setupPreset.trackAmount,
+            firstConsumableTrackUnit: setupPreset.trackUnit,
+            firstConsumableCostAmountPerTrack: Double(setupPreset.costAmountPerTrackText.replacingOccurrences(of: ",", with: ".")) ?? 1,
+            firstConsumableCostUnit: setupPreset.costUnit,
+            firstConsumablePurchaseName: setupPreset.purchaseName,
+            firstConsumableDefaultPurchaseAmount: quantityValue,
             addFirstConsumable: true
         )
     }

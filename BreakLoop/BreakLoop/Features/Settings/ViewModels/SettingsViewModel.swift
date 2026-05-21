@@ -58,23 +58,32 @@ final class SettingsViewModel: ObservableObject {
         name: String,
         category: ConsumableCategory,
         consumePresetName: String,
-        defaultAmountPerConsumeText: String,
-        defaultUnit: ConsumeUnit,
+        trackName: String,
+        trackAmountText: String,
+        trackUnit: ConsumeUnit,
         usageMethod: ConsumableUsageMethod,
-        purchasePresetName: String,
-        defaultPurchaseUnit: ConsumeUnit,
-        defaultUnitsPerPurchaseText: String,
+        costAmountPerTrackText: String,
+        costUnit: ConsumeUnit,
+        purchaseName: String,
+        purchaseAmountText: String,
+        purchaseUnit: ConsumeUnit,
         existingItem: ConsumableItem?
     ) async -> Bool {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parsedAmountPerConsume = Double(defaultAmountPerConsumeText.replacingOccurrences(of: ",", with: "."))
-        let parsedUnitsPerPurchase = Double(defaultUnitsPerPurchaseText.replacingOccurrences(of: ",", with: "."))
+        let trimmedTrackName = trackName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPurchaseName = purchaseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parsedTrackAmount = Double(trackAmountText.replacingOccurrences(of: ",", with: "."))
+        let parsedCostAmount = Double(costAmountPerTrackText.replacingOccurrences(of: ",", with: "."))
+        let parsedPurchaseAmount = Double(purchaseAmountText.replacingOccurrences(of: ",", with: "."))
 
         guard !trimmedName.isEmpty,
-              let parsedAmountPerConsume,
-              parsedAmountPerConsume > 0,
-              let parsedUnitsPerPurchase,
-              parsedUnitsPerPurchase > 0
+              !trimmedTrackName.isEmpty,
+              let parsedTrackAmount,
+              parsedTrackAmount > 0,
+              let parsedCostAmount,
+              parsedCostAmount > 0,
+              let parsedPurchaseAmount,
+              parsedPurchaseAmount > 0
         else {
             message = "Check consumable form"
             return false
@@ -86,16 +95,23 @@ final class SettingsViewModel: ObservableObject {
             userId: userId,
             name: trimmedName,
             category: category,
-            defaultUnit: defaultUnit,
+            defaultUnit: trackUnit,
             usageMethod: usageMethod,
             pricingMode: .perPurchase,
-            defaultPurchaseUnit: defaultPurchaseUnit,
-            defaultAmountPerConsume: parsedAmountPerConsume,
-            defaultUnitsPerPurchase: parsedUnitsPerPurchase,
-            defaultCostPerConsume: existingItem?.defaultCostPerConsume,
+            defaultPurchaseUnit: purchaseUnit,
+            defaultAmountPerConsume: parsedTrackAmount,
+            defaultUnitsPerPurchase: parsedPurchaseAmount,
+            defaultCostPerConsume: nil,
             note: existingItem?.note,
             consumePresetName: consumePresetName,
-            purchasePresetName: purchasePresetName.trimmingCharacters(in: .whitespacesAndNewlines),
+            purchasePresetName: trimmedPurchaseName,
+            trackName: trimmedTrackName,
+            trackAmount: parsedTrackAmount,
+            trackUnit: trackUnit,
+            costAmountPerTrack: parsedCostAmount,
+            costUnit: costUnit,
+            purchaseName: trimmedPurchaseName,
+            defaultPurchaseAmount: parsedPurchaseAmount,
             createdAt: existingItem?.createdAt ?? now,
             updatedAt: now,
             isArchived: false

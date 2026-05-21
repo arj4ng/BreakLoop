@@ -211,47 +211,42 @@ struct CalculationService {
     ) -> Decimal {
         let itemPurchases = filteredPurchases(purchases, consumableItemId: item.id)
 
-        // weighted average pro defaultUnit aus purchases
-        var totalSpendInDefaultUnit = Decimal.zero
-        var totalDefaultQuantity = 0.0
+        // weighted average pro costUnit aus purchases
+        var totalSpendInCostUnit = Decimal.zero
+        var totalCostQuantity = 0.0
 
         for purchase in itemPurchases {
             guard
-                let defaultQuantity = convertedQuantityToDefaultUnit(
+                let costQuantity = convertedQuantity(
                     quantity: purchase.quantity,
                     from: purchase.unit,
+                    to: item.effectiveCostUnit,
                     item: item
                 ),
-                defaultQuantity > 0
+                costQuantity > 0
             else {
                 continue
             }
 
-            let safeDefaultQuantity = decimal(from: defaultQuantity)
+            let safeCostQuantity = decimal(from: costQuantity)
 
             // primär gespeicherte unit cost nutzen, fallback auf price/qty
-            if let normalizedCost = normalizedCalculatedCostPerDefaultUnit(purchase: purchase, item: item), normalizedCost > 0 {
-                totalSpendInDefaultUnit += normalizedCost * safeDefaultQuantity
+            if let normalizedCost = normalizedCalculatedCostPerCostUnit(purchase: purchase, item: item), normalizedCost > 0 {
+                totalSpendInCostUnit += normalizedCost * safeCostQuantity
             } else if purchase.price > 0 {
-                totalSpendInDefaultUnit += purchase.price
+                totalSpendInCostUnit += purchase.price
             }
 
-            totalDefaultQuantity += defaultQuantity
+            totalCostQuantity += costQuantity
         }
 
         // primär datenquelle = weighted purchase average
-        if totalDefaultQuantity > 0, totalSpendInDefaultUnit > 0 {
-            let costPerUnit = totalSpendInDefaultUnit / decimal(from: totalDefaultQuantity)
-            let amountPerConsume = max(0.0001, item.defaultAmountPerConsume ?? 1)
-            return costPerUnit * decimal(from: amountPerConsume)
+        if totalCostQuantity > 0, totalSpendInCostUnit > 0 {
+            let costPerUnit = totalSpendInCostUnit / decimal(from: totalCostQuantity)
+            return costPerUnit * decimal(from: item.effectiveCostAmountPerTrack)
         }
 
-        // fallback 1 = item default cost
-        if let defaultCost = item.defaultCostPerConsume, defaultCost > 0 {
-            return defaultCost
-        }
-
-        // fallback 2 = profil baseline cost nur wenn explizit erlaubt
+        // fallback = profil baseline cost nur wenn explizit erlaubt
         if useProfileFallback, let baselineCost = profile.baselineCostPerConsume, baselineCost > 0 {
             return baselineCost
         }
@@ -456,65 +451,70 @@ struct CalculationService {
     // normalisiert amount auf consume-count basis für unterschiedliche units
     private func normalizedConsumeAmount(entry: ConsumeEntry, item: ConsumableItem) -> Double {
         guard
-            let converted = convertedQuantityToDefaultUnit(
-                quantity: entry.amount,
-                from: entry.unit,
-                item: item
-            )
+                let converted = convertedQuantity(
+                    quantity: entry.amount,
+                    from: entry.unit,
+                    to: item.effectiveTrackUnit,
+                    item: item
+                )
         else {
             return 0
         }
 
-        let amountPerConsume = max(0.0001, item.defaultAmountPerConsume ?? 1)
+        let amountPerConsume = max(0.0001, item.effectiveTrackAmount)
         return converted / amountPerConsume
     }
 
-    // konvertiert quantity von source unit in item.defaultUnit
-    private func convertedQuantityToDefaultUnit(
+    // konvertiert quantity zwischen kompatiblen einheiten
+    private func convertedQuantity(
         quantity: Double,
         from sourceUnit: ConsumeUnit,
+        to targetUnit: ConsumeUnit,
         item: ConsumableItem
     ) -> Double? {
         let safeQuantity = max(0, quantity)
         guard safeQuantity > 0 else { return 0 }
 
-        if sourceUnit == item.defaultUnit {
+        if sourceUnit == targetUnit {
             return safeQuantity
         }
 
-        // pack conversion nur mit item metadata, kein hardcoded 20er wert
-        if sourceUnit == .pack, item.defaultUnit != .pack {
-            guard let unitsPerPurchase = item.defaultUnitsPerPurchase, unitsPerPurchase > 0 else { return nil }
-            return safeQuantity * unitsPerPurchase
+        // pack conversion nutzt item metadata, kein hardcoded 20er wert
+        if sourceUnit == .pack, targetUnit != .pack {
+            let purchaseAmount = item.effectiveDefaultPurchaseAmount
+            guard purchaseAmount > 0 else { return nil }
+            return safeQuantity * purchaseAmount
         }
 
-        if item.defaultUnit == .pack, sourceUnit != .pack {
-            guard let unitsPerPurchase = item.defaultUnitsPerPurchase, unitsPerPurchase > 0 else { return nil }
-            return safeQuantity / unitsPerPurchase
+        if targetUnit == .pack, sourceUnit != .pack {
+            let purchaseAmount = item.effectiveDefaultPurchaseAmount
+            guard purchaseAmount > 0 else { return nil }
+            return safeQuantity / purchaseAmount
         }
 
         // sonst keine implizite cross unit conversion
         return nil
     }
 
-    private func normalizedCalculatedCostPerDefaultUnit(
+    private func normalizedCalculatedCostPerCostUnit(
         purchase: PurchaseEntry,
         item: ConsumableItem
     ) -> Decimal? {
         guard purchase.calculatedCostPerUnit > 0 else { return nil }
 
         guard
-            let unitsInDefault = convertedQuantityToDefaultUnit(
+            let unitsInCostUnit = convertedQuantity(
                 quantity: 1,
                 from: purchase.unit,
+                to: item.effectiveCostUnit,
                 item: item
             ),
-            unitsInDefault > 0
+            unitsInCostUnit > 0
         else {
             return nil
         }
 
-        return purchase.calculatedCostPerUnit / decimal(from: unitsInDefault)
+        return purchase.calculatedCostPerUnit / decimal(from: unitsInCostUnit)
     }
 
     private func hasRewardBonusAlready(

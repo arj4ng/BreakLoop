@@ -54,7 +54,7 @@ final class DashboardViewModelTests: XCTestCase {
 
         viewModel.start()
         await realtime.send(consumables: [item])
-        await viewModel.savePurchase(price: 12.50, quantity: 3)
+        await viewModel.savePurchase(price: 12.50, quantity: 3, unit: .pack)
 
         XCTAssertEqual(repository.savedPurchases.count, 1)
         XCTAssertEqual(repository.savedPurchases.first?.entry.userId, "user-1")

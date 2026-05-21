@@ -26,25 +26,32 @@ struct ConsumableFormSubmission: Hashable, Sendable {
     let name: String
     let category: ConsumableCategory
     let consumePresetName: String
-    let defaultAmountPerConsumeText: String
-    let defaultUnit: ConsumeUnit
+    let trackName: String
+    let trackAmountText: String
+    let trackUnit: ConsumeUnit
     let usageMethod: ConsumableUsageMethod
-    let purchasePresetName: String
-    let defaultPurchaseUnit: ConsumeUnit
-    let defaultUnitsPerPurchaseText: String
+    let costAmountPerTrackText: String
+    let costUnit: ConsumeUnit
+    let purchaseName: String
+    let purchaseAmountText: String
+    let purchaseUnit: ConsumeUnit
 }
 
 struct ConsumableSetupPreset: Identifiable, Hashable {
     let id: String
     let title: String
-    let unit: ConsumeUnit
+    let trackName: String
+    let trackAmountText: String
+    let trackUnit: ConsumeUnit
     let usageMethod: ConsumableUsageMethod
-    let defaultAmountText: String
-    let purchaseUnit: ConsumeUnit
-    let purchaseAmountText: String
+    let costAmountPerTrackText: String
+    let costUnit: ConsumeUnit
+    let purchaseName: String
+    let defaultPurchaseAmountText: String
+    let defaultPurchaseUnit: ConsumeUnit
 
-    var defaultAmount: Double {
-        Double(defaultAmountText.replacingOccurrences(of: ",", with: ".")) ?? 1
+    var trackAmount: Double {
+        Double(trackAmountText.replacingOccurrences(of: ",", with: ".")) ?? 1
     }
 }
 
@@ -53,11 +60,15 @@ enum ConsumableSetupPresets {
         ConsumableSetupPreset(
             id: "custom",
             title: "Custom",
-            unit: .piece,
+            trackName: "unit",
+            trackAmountText: "1",
+            trackUnit: .piece,
             usageMethod: .custom,
-            defaultAmountText: "1",
-            purchaseUnit: .piece,
-            purchaseAmountText: "1"
+            costAmountPerTrackText: "1",
+            costUnit: .piece,
+            purchaseName: "Purchase",
+            defaultPurchaseAmountText: "1",
+            defaultPurchaseUnit: .piece
         )
     }
 
@@ -65,61 +76,70 @@ enum ConsumableSetupPresets {
         switch category {
         case .cannabis:
             return [
-                preset("joint", "Joint", .piece, .perPiece, "1", .gram, "5"),
-                preset("gram", "Gram", .gram, .perGram, "0.3", .gram, "5"),
-                preset("edible", "Edible", .piece, .perPiece, "1", .piece, "10"),
-                preset("vapeHit", "Vape hit", .piece, .perPiece, "1", .gram, "1")
+                preset("joint", "Joint", "joint", "1", .piece, .perPiece, "0.3", .gram, "Bag", "5", .gram),
+                preset("gram", "Gram", "gram", "1", .gram, .perGram, "1", .gram, "Bag", "5", .gram),
+                preset("edible", "Edible", "edible", "1", .piece, .perPiece, "1", .piece, "Pack", "10", .piece),
+                preset("vapeHit", "Vape hit", "hit", "1", .piece, .perPiece, "0.05", .gram, "Cartridge", "1", .gram)
             ]
         case .nicotine:
             return [
-                preset("cigarette", "Cigarette", .piece, .perPiece, "1", .pack, "20"),
-                preset("gum", "Gum", .piece, .perPiece, "1", .pack, "30"),
-                preset("pouch", "Pouch", .piece, .perPiece, "1", .pack, "20"),
-                preset("vapePuff", "Vape puff", .piece, .perPiece, "5", .milliliter, "10"),
-                preset("tobaccoGram", "Tobacco gram", .gram, .perGram, "1", .gram, "30")
+                preset("cigarette", "Cigarette", "cigarette", "1", .piece, .perPiece, "1", .piece, "Pack", "20", .piece),
+                preset("gum", "Gum", "gum", "1", .piece, .perPiece, "1", .piece, "Pack", "30", .piece),
+                preset("pouch", "Pouch", "pouch", "1", .piece, .perPiece, "1", .piece, "Can", "20", .piece),
+                preset("vapePuff", "Vape puff", "puffs", "5", .piece, .perPiece, "0.05", .milliliter, "Bottle", "10", .milliliter),
+                preset("tobaccoGram", "Tobacco gram", "gram", "1", .gram, .perGram, "1", .gram, "Bag", "30", .gram)
             ]
         case .alcohol:
             return [
-                preset("beer", "Beer", .milliliter, .perMilliliter, "500", .milliliter, "500"),
-                preset("wine", "Wine glass", .milliliter, .perMilliliter, "150", .milliliter, "750"),
-                preset("shot", "Shot", .milliliter, .perMilliliter, "40", .milliliter, "700"),
-                preset("cocktail", "Cocktail", .piece, .perPiece, "1", .piece, "1")
+                preset("beer", "Beer", "beer", "1", .piece, .perPiece, "500", .milliliter, "Can", "500", .milliliter),
+                preset("wine", "Wine glass", "glass", "1", .piece, .perPiece, "150", .milliliter, "Bottle", "750", .milliliter),
+                preset("shot", "Shot", "shot", "1", .piece, .perPiece, "40", .milliliter, "Bottle", "700", .milliliter),
+                preset("cocktail", "Cocktail", "cocktail", "1", .piece, .perPiece, "1", .piece, "Drink", "1", .piece)
             ]
         case .caffeine:
             return [
-                preset("coffee", "Coffee", .cup, .perCup, "1", .gram, "500"),
-                preset("energyDrink", "Energy drink", .piece, .perPiece, "1", .piece, "1"),
-                preset("tea", "Tea", .cup, .perCup, "1", .piece, "20"),
-                preset("pill", "Caffeine pill", .dose, .perDose, "1", .dose, "100")
+                preset("coffee", "Coffee", "cup", "1", .cup, .perCup, "1", .cup, "Coffee", "1", .cup),
+                preset("coffeeBeans", "Coffee beans", "cup", "1", .cup, .perCup, "10", .gram, "Bag", "500", .gram),
+                preset("energyDrink", "Energy drink", "can", "1", .piece, .perPiece, "1", .piece, "Can", "1", .piece),
+                preset("tea", "Tea", "cup", "1", .cup, .perCup, "1", .piece, "Box", "20", .piece),
+                preset("pill", "Caffeine pill", "pill", "1", .dose, .perDose, "1", .dose, "Box", "100", .dose)
             ]
         case .medicine:
             return [
-                preset("pill", "Pill", .dose, .perDose, "1", .dose, "30"),
-                preset("dose", "Dose", .dose, .perDose, "1", .dose, "1"),
-                preset("ml", "Milliliter", .milliliter, .perMilliliter, "5", .milliliter, "100")
+                preset("pill", "Pill", "pill", "1", .dose, .perDose, "1", .dose, "Box", "30", .dose),
+                preset("dose", "Dose", "dose", "1", .dose, .perDose, "1", .dose, "Dose", "1", .dose),
+                preset("ml", "Milliliter", "dose", "1", .dose, .perDose, "5", .milliliter, "Bottle", "100", .milliliter)
             ]
         case .custom:
-            return [preset("custom", "Custom", .piece, .custom, "1", .piece, "1")]
+            return [preset("custom", "Custom", "unit", "1", .piece, .custom, "1", .piece, "Purchase", "1", .piece)]
         }
     }
 
     private static func preset(
         _ id: String,
         _ title: String,
-        _ unit: ConsumeUnit,
+        _ trackName: String,
+        _ trackAmountText: String,
+        _ trackUnit: ConsumeUnit,
         _ usageMethod: ConsumableUsageMethod,
-        _ defaultAmountText: String,
-        _ purchaseUnit: ConsumeUnit,
-        _ purchaseAmountText: String
+        _ costAmountPerTrackText: String,
+        _ costUnit: ConsumeUnit,
+        _ purchaseName: String,
+        _ defaultPurchaseAmountText: String,
+        _ defaultPurchaseUnit: ConsumeUnit
     ) -> ConsumableSetupPreset {
         ConsumableSetupPreset(
             id: id,
             title: title,
-            unit: unit,
+            trackName: trackName,
+            trackAmountText: trackAmountText,
+            trackUnit: trackUnit,
             usageMethod: usageMethod,
-            defaultAmountText: defaultAmountText,
-            purchaseUnit: purchaseUnit,
-            purchaseAmountText: purchaseAmountText
+            costAmountPerTrackText: costAmountPerTrackText,
+            costUnit: costUnit,
+            purchaseName: purchaseName,
+            defaultPurchaseAmountText: defaultPurchaseAmountText,
+            defaultPurchaseUnit: defaultPurchaseUnit
         )
     }
 }

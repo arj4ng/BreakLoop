@@ -137,12 +137,15 @@ private struct ConsumablesSettingsView: View {
                     name: submission.name,
                     category: submission.category,
                     consumePresetName: submission.consumePresetName,
-                    defaultAmountPerConsumeText: submission.defaultAmountPerConsumeText,
-                    defaultUnit: submission.defaultUnit,
+                    trackName: submission.trackName,
+                    trackAmountText: submission.trackAmountText,
+                    trackUnit: submission.trackUnit,
                     usageMethod: submission.usageMethod,
-                    purchasePresetName: submission.purchasePresetName,
-                    defaultPurchaseUnit: submission.defaultPurchaseUnit,
-                    defaultUnitsPerPurchaseText: submission.defaultUnitsPerPurchaseText,
+                    costAmountPerTrackText: submission.costAmountPerTrackText,
+                    costUnit: submission.costUnit,
+                    purchaseName: submission.purchaseName,
+                    purchaseAmountText: submission.purchaseAmountText,
+                    purchaseUnit: submission.purchaseUnit,
                     existingItem: existingItem
                 )
             }
@@ -179,7 +182,7 @@ private struct ConsumablesSettingsView: View {
                 Text(item.name)
                     .foregroundStyle(AppColors.textPrimary)
 
-                Text("\(item.defaultUnit.rawValue) • \(item.usageMethod.rawValue)")
+                Text("\(item.effectiveTrackName) • \(item.effectiveCostAmountPerTrack) \(item.effectiveCostUnit.rawValue)")
                     .font(.caption)
                     .foregroundStyle(AppColors.textSecondary)
             }
@@ -261,10 +264,24 @@ private struct ConsumableFormView: View {
                 }
 
                 Section("One consume") {
-                    TextField("Amount", text: $form.defaultAmountPerConsumeText)
+                    TextField("Track name", text: $form.trackName)
+                        .textInputAutocapitalization(.words)
+
+                    TextField("Amount", text: $form.trackAmountText)
                         .keyboardType(.decimalPad)
 
-                    Picker("Unit", selection: $form.defaultUnit) {
+                    Picker("Unit", selection: $form.trackUnit) {
+                        ForEach(ConsumeUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue.capitalized).tag(unit)
+                        }
+                    }
+                }
+
+                Section("Cost basis") {
+                    TextField("One consume uses", text: $form.costAmountPerTrackText)
+                        .keyboardType(.decimalPad)
+
+                    Picker("Cost unit", selection: $form.costUnit) {
                         ForEach(ConsumeUnit.allCases, id: \.self) { unit in
                             Text(unit.rawValue.capitalized).tag(unit)
                         }
@@ -272,13 +289,13 @@ private struct ConsumableFormView: View {
                 }
 
                 Section("Bought as") {
-                    TextField("Package name", text: $form.purchasePresetName)
+                    TextField("Purchase name", text: $form.purchaseName)
                         .textInputAutocapitalization(.words)
 
-                    TextField("Amount inside", text: $form.defaultUnitsPerPurchaseText)
+                    TextField("Default amount", text: $form.purchaseAmountText)
                         .keyboardType(.decimalPad)
 
-                    Picker("Unit inside", selection: $form.defaultPurchaseUnit) {
+                    Picker("Purchase unit", selection: $form.purchaseUnit) {
                         ForEach(ConsumeUnit.allCases, id: \.self) { unit in
                             Text(unit.rawValue.capitalized).tag(unit)
                         }
@@ -326,12 +343,15 @@ private final class ConsumableFormState: ObservableObject {
     @Published var name: String
     @Published var category: ConsumableCategory
     @Published var consumePresetId: String
-    @Published var defaultAmountPerConsumeText: String
-    @Published var defaultUnit: ConsumeUnit
+    @Published var trackName: String
+    @Published var trackAmountText: String
+    @Published var trackUnit: ConsumeUnit
     @Published var usageMethod: ConsumableUsageMethod
-    @Published var purchasePresetName: String
-    @Published var defaultPurchaseUnit: ConsumeUnit
-    @Published var defaultUnitsPerPurchaseText: String
+    @Published var costAmountPerTrackText: String
+    @Published var costUnit: ConsumeUnit
+    @Published var purchaseName: String
+    @Published var purchaseAmountText: String
+    @Published var purchaseUnit: ConsumeUnit
 
     init(item: ConsumableItem?) {
         let category = item?.category ?? .custom
@@ -341,19 +361,24 @@ private final class ConsumableFormState: ObservableObject {
         self.name = item?.name ?? ""
         self.category = category
         self.consumePresetId = matchedPreset.id
-        self.defaultAmountPerConsumeText = item?.defaultAmountPerConsume.map { String($0) } ?? matchedPreset.defaultAmountText
-        self.defaultUnit = item?.defaultUnit ?? matchedPreset.unit
+        self.trackName = item?.trackName ?? item?.consumePresetName ?? matchedPreset.trackName
+        self.trackAmountText = item?.trackAmount.map { String($0) } ?? item?.defaultAmountPerConsume.map { String($0) } ?? matchedPreset.trackAmountText
+        self.trackUnit = item?.trackUnit ?? item?.defaultUnit ?? matchedPreset.trackUnit
         self.usageMethod = item?.usageMethod ?? matchedPreset.usageMethod
-        self.purchasePresetName = item?.purchasePresetName ?? Self.defaultPurchaseName(for: matchedPreset)
-        self.defaultPurchaseUnit = item?.defaultPurchaseUnit ?? matchedPreset.purchaseUnit
-        self.defaultUnitsPerPurchaseText = item?.defaultUnitsPerPurchase.map { String($0) } ?? matchedPreset.purchaseAmountText
+        self.costAmountPerTrackText = item?.costAmountPerTrack.map { String($0) } ?? item.map { String($0.effectiveCostAmountPerTrack) } ?? matchedPreset.costAmountPerTrackText
+        self.costUnit = item?.costUnit ?? item?.effectiveCostUnit ?? matchedPreset.costUnit
+        self.purchaseName = item?.purchaseName ?? item?.purchasePresetName ?? matchedPreset.purchaseName
+        self.purchaseAmountText = item?.defaultPurchaseAmount.map { String($0) } ?? item?.defaultUnitsPerPurchase.map { String($0) } ?? matchedPreset.defaultPurchaseAmountText
+        self.purchaseUnit = item?.defaultPurchaseUnit ?? matchedPreset.defaultPurchaseUnit
     }
 
     var canSave: Bool {
         let hasName = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let consumeAmount = Double(defaultAmountPerConsumeText.replacingOccurrences(of: ",", with: "."))
-        let purchaseAmount = Double(defaultUnitsPerPurchaseText.replacingOccurrences(of: ",", with: "."))
-        return hasName && (consumeAmount ?? 0) > 0 && (purchaseAmount ?? 0) > 0
+        let hasTrackName = !trackName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let trackAmount = Double(trackAmountText.replacingOccurrences(of: ",", with: "."))
+        let costAmount = Double(costAmountPerTrackText.replacingOccurrences(of: ",", with: "."))
+        let purchaseAmount = Double(purchaseAmountText.replacingOccurrences(of: ",", with: "."))
+        return hasName && hasTrackName && (trackAmount ?? 0) > 0 && (costAmount ?? 0) > 0 && (purchaseAmount ?? 0) > 0
     }
 
     func makeSubmission(selectedPreset: ConsumableSetupPreset) -> ConsumableFormSubmission {
@@ -361,12 +386,15 @@ private final class ConsumableFormState: ObservableObject {
             name: name,
             category: category,
             consumePresetName: selectedPreset.title,
-            defaultAmountPerConsumeText: defaultAmountPerConsumeText,
-            defaultUnit: defaultUnit,
+            trackName: trackName,
+            trackAmountText: trackAmountText,
+            trackUnit: trackUnit,
             usageMethod: usageMethod,
-            purchasePresetName: purchasePresetName,
-            defaultPurchaseUnit: defaultPurchaseUnit,
-            defaultUnitsPerPurchaseText: defaultUnitsPerPurchaseText
+            costAmountPerTrackText: costAmountPerTrackText,
+            costUnit: costUnit,
+            purchaseName: purchaseName,
+            purchaseAmountText: purchaseAmountText,
+            purchaseUnit: purchaseUnit
         )
     }
 
@@ -377,23 +405,15 @@ private final class ConsumableFormState: ObservableObject {
     }
 
     func applyPreset(_ preset: ConsumableSetupPreset) {
-        defaultAmountPerConsumeText = preset.defaultAmountText
-        defaultUnit = preset.unit
+        trackName = preset.trackName
+        trackAmountText = preset.trackAmountText
+        trackUnit = preset.trackUnit
         usageMethod = preset.usageMethod
-        purchasePresetName = Self.defaultPurchaseName(for: preset)
-        defaultPurchaseUnit = preset.purchaseUnit
-        defaultUnitsPerPurchaseText = preset.purchaseAmountText
-    }
-
-    private static func defaultPurchaseName(for preset: ConsumableSetupPreset) -> String {
-        switch preset.purchaseUnit {
-        case .pack: return "Pack"
-        case .gram: return "Bag"
-        case .milliliter: return "Bottle"
-        case .cup: return "Box"
-        case .dose: return "Box"
-        case .piece, .other: return "Package"
-        }
+        costAmountPerTrackText = preset.costAmountPerTrackText
+        costUnit = preset.costUnit
+        purchaseName = preset.purchaseName
+        purchaseAmountText = preset.defaultPurchaseAmountText
+        purchaseUnit = preset.defaultPurchaseUnit
     }
 }
 

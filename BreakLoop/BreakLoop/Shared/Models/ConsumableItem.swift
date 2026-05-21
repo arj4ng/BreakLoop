@@ -78,6 +78,27 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
     // ui preset für verständliche purchase anzeige zB bag, pack, bottle
     var purchasePresetName: String?
 
+    // user sichtbarer consume name zB joint, cigarette, cup
+    var trackName: String?
+
+    // amount pro log in track unit, meistens 1
+    var trackAmount: Double?
+
+    // unit die beim loggen angezeigt und gespeichert wird
+    var trackUnit: ConsumeUnit?
+
+    // kostenbasis pro consume, zB ein joint nutzt 0.3 gram
+    var costAmountPerTrack: Double?
+
+    // unit für kostenberechnung, zB gram, piece, ml
+    var costUnit: ConsumeUnit?
+
+    // user sichtbarer kaufname zB bag, pack, bottle
+    var purchaseName: String?
+
+    // typische kaufmenge in defaultPurchaseUnit
+    var defaultPurchaseAmount: Double?
+
     // creation timestamp für sortierung
     var createdAt: Date
 
@@ -102,6 +123,13 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         note: String? = nil,
         consumePresetName: String? = nil,
         purchasePresetName: String? = nil,
+        trackName: String? = nil,
+        trackAmount: Double? = nil,
+        trackUnit: ConsumeUnit? = nil,
+        costAmountPerTrack: Double? = nil,
+        costUnit: ConsumeUnit? = nil,
+        purchaseName: String? = nil,
+        defaultPurchaseAmount: Double? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         isArchived: Bool = false
@@ -122,6 +150,13 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         self.note = note
         self.consumePresetName = consumePresetName
         self.purchasePresetName = purchasePresetName
+        self.trackName = trackName
+        self.trackAmount = trackAmount.map { max(0, $0) }
+        self.trackUnit = trackUnit
+        self.costAmountPerTrack = costAmountPerTrack.map { max(0, $0) }
+        self.costUnit = costUnit
+        self.purchaseName = purchaseName
+        self.defaultPurchaseAmount = defaultPurchaseAmount.map { max(0, $0) }
 
         // createdAt bleibt original erstellzeitpunkt
         self.createdAt = createdAt
@@ -129,5 +164,76 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         // updatedAt wird bei edits später ersetzt
         self.updatedAt = updatedAt
         self.isArchived = isArchived
+    }
+}
+
+extension ConsumableItem {
+    var effectiveTrackName: String {
+        let value = trackName ?? consumePresetName ?? name
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? name : value
+    }
+
+    var effectiveTrackAmount: Double {
+        positive(trackAmount) ?? positive(defaultAmountPerConsume) ?? 1
+    }
+
+    var effectiveTrackUnit: ConsumeUnit {
+        trackUnit ?? defaultUnit
+    }
+
+    var effectiveCostUnit: ConsumeUnit {
+        costUnit ?? inferredLegacyCostUnit
+    }
+
+    var effectiveCostAmountPerTrack: Double {
+        positive(costAmountPerTrack) ?? inferredLegacyCostAmountPerTrack
+    }
+
+    var effectivePurchaseName: String {
+        let value = purchaseName ?? purchasePresetName ?? "Purchase"
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Purchase" : value
+    }
+
+    var effectiveDefaultPurchaseAmount: Double {
+        positive(defaultPurchaseAmount) ?? positive(defaultUnitsPerPurchase) ?? 1
+    }
+
+    var effectiveDefaultPurchaseUnit: ConsumeUnit {
+        defaultPurchaseUnit ?? effectiveCostUnit
+    }
+
+    var usesDynamicCostModel: Bool {
+        trackName != nil ||
+        trackAmount != nil ||
+        trackUnit != nil ||
+        costAmountPerTrack != nil ||
+        costUnit != nil ||
+        purchaseName != nil ||
+        defaultPurchaseAmount != nil
+    }
+
+    private var inferredLegacyCostUnit: ConsumeUnit {
+        if let defaultPurchaseUnit, defaultPurchaseUnit != .pack {
+            return defaultPurchaseUnit
+        }
+
+        return defaultUnit == .pack ? .piece : defaultUnit
+    }
+
+    private var inferredLegacyCostAmountPerTrack: Double {
+        if let defaultAmount = positive(defaultAmountPerConsume), effectiveCostUnit == defaultUnit {
+            return defaultAmount
+        }
+
+        if category == .cannabis, defaultUnit == .piece, effectiveCostUnit == .gram {
+            return 0.3
+        }
+
+        return positive(defaultAmountPerConsume) ?? 1
+    }
+
+    private func positive(_ value: Double?) -> Double? {
+        guard let value, value > 0 else { return nil }
+        return value
     }
 }

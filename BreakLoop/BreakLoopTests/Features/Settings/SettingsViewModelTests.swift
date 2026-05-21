@@ -10,12 +10,15 @@ final class SettingsViewModelTests: XCTestCase {
             name: "Coffee",
             category: .caffeine,
             consumePresetName: "Coffee",
-            defaultAmountPerConsumeText: "1",
-            defaultUnit: .cup,
+            trackName: "unit",
+            trackAmountText: "1",
+            trackUnit: .cup,
             usageMethod: .perCup,
-            purchasePresetName: "Bag",
-            defaultPurchaseUnit: .gram,
-            defaultUnitsPerPurchaseText: "500",
+            costAmountPerTrackText: "1",
+            costUnit: .cup,
+            purchaseName: "Bag",
+            purchaseAmountText: "500",
+            purchaseUnit: .gram,
             existingItem: nil
         )
 
@@ -24,6 +27,8 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(service.savedItems.first?.item.name, "Coffee")
         XCTAssertEqual(service.savedItems.first?.item.category, .caffeine)
         XCTAssertEqual(service.savedItems.first?.item.defaultUnit, .cup)
+        XCTAssertEqual(service.savedItems.first?.item.trackName, "unit")
+        XCTAssertEqual(service.savedItems.first?.item.costUnit, .cup)
         XCTAssertEqual(service.savedItems.first?.scope, .guest)
     }
 
@@ -35,12 +40,15 @@ final class SettingsViewModelTests: XCTestCase {
             name: "New",
             category: .custom,
             consumePresetName: "Custom",
-            defaultAmountPerConsumeText: "1",
-            defaultUnit: .gram,
+            trackName: "unit",
+            trackAmountText: "1",
+            trackUnit: .gram,
             usageMethod: .custom,
-            purchasePresetName: "Bag",
-            defaultPurchaseUnit: .gram,
-            defaultUnitsPerPurchaseText: "10",
+            costAmountPerTrackText: "1",
+            costUnit: .gram,
+            purchaseName: "Bag",
+            purchaseAmountText: "10",
+            purchaseUnit: .gram,
             existingItem: existing
         )
 
@@ -62,7 +70,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(service.archivedItems.first?.scope, .guest)
     }
 
-    func testDraftValidationBlocksEmptyName() {
+    func testDraftValidationBlocksEmptyName() async {
         let service = SettingsConsumableServiceFake()
         let viewModel = SettingsViewModel(userId: "user-1", scope: .registered, service: service)
 
@@ -70,12 +78,15 @@ final class SettingsViewModelTests: XCTestCase {
             name: "   ",
             category: .custom,
             consumePresetName: "Custom",
-            defaultAmountPerConsumeText: "1",
-            defaultUnit: .piece,
+            trackName: "unit",
+            trackAmountText: "1",
+            trackUnit: .piece,
             usageMethod: .custom,
-            purchasePresetName: "Package",
-            defaultPurchaseUnit: .piece,
-            defaultUnitsPerPurchaseText: "1",
+            costAmountPerTrackText: "1",
+            costUnit: .piece,
+            purchaseName: "Package",
+            purchaseAmountText: "1",
+            purchaseUnit: .piece,
             existingItem: nil
         )
 
@@ -89,12 +100,15 @@ final class SettingsViewModelTests: XCTestCase {
             name: "Pods",
             category: .nicotine,
             consumePresetName: "Pouch",
-            defaultAmountPerConsumeText: "1",
-            defaultUnit: .piece,
+            trackName: "unit",
+            trackAmountText: "1",
+            trackUnit: .piece,
             usageMethod: .perPiece,
-            purchasePresetName: "Pack",
-            defaultPurchaseUnit: .pack,
-            defaultUnitsPerPurchaseText: "20",
+            costAmountPerTrackText: "1",
+            costUnit: .piece,
+            purchaseName: "Pack",
+            purchaseAmountText: "20",
+            purchaseUnit: .pack,
             existingItem: nil
         )
 
@@ -102,6 +116,8 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(service.savedItems.first?.item.pricingMode, .perPurchase)
         XCTAssertEqual(service.savedItems.first?.item.defaultPurchaseUnit, .pack)
         XCTAssertEqual(service.savedItems.first?.item.defaultUnitsPerPurchase, 20)
+        XCTAssertEqual(service.savedItems.first?.item.purchaseName, "Pack")
+        XCTAssertEqual(service.savedItems.first?.item.defaultPurchaseAmount, 20)
     }
 
     private func makeItem(id: String, name: String) -> ConsumableItem {

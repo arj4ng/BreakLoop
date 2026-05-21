@@ -216,6 +216,13 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
             note: data["note"] as? String,
             consumePresetName: data["consumePresetName"] as? String,
             purchasePresetName: data["purchasePresetName"] as? String,
+            trackName: data["trackName"] as? String,
+            trackAmount: data["trackAmount"] as? Double,
+            trackUnit: (data["trackUnit"] as? String).flatMap(ConsumeUnit.init(rawValue:)),
+            costAmountPerTrack: data["costAmountPerTrack"] as? Double,
+            costUnit: (data["costUnit"] as? String).flatMap(ConsumeUnit.init(rawValue:)),
+            purchaseName: data["purchaseName"] as? String,
+            defaultPurchaseAmount: data["defaultPurchaseAmount"] as? Double,
             createdAt: timestampToDate(data["createdAt"]) ?? .now,
             updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
             isArchived: data["isArchived"] as? Bool ?? false

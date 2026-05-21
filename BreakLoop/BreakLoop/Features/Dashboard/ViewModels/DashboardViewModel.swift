@@ -104,8 +104,8 @@ final class DashboardViewModel: ObservableObject {
             userId: userId,
             consumableItemId: selectedItem.id,
             timestamp: .now,
-            amount: selectedItem.defaultAmountPerConsume ?? 1,
-            unit: selectedItem.defaultUnit
+            amount: selectedItem.effectiveTrackAmount,
+            unit: selectedItem.effectiveTrackUnit
         )
 
         do {
@@ -136,7 +136,7 @@ final class DashboardViewModel: ObservableObject {
     }
 
     // purchase sheet sammelt nur preis + menge; rest kommt vom gewählten consumable
-    func savePurchase(price: Decimal, quantity: Double) async {
+    func savePurchase(price: Decimal, quantity: Double, unit: ConsumeUnit) async {
         guard let selectedItem else {
             showMissingConsumableMessage()
             return
@@ -149,7 +149,7 @@ final class DashboardViewModel: ObservableObject {
             purchaseDate: .now,
             price: price,
             quantity: quantity,
-            unit: selectedItem.defaultPurchaseUnit ?? selectedItem.defaultUnit
+            unit: unit
         )
 
         do {
@@ -259,13 +259,13 @@ final class DashboardViewModel: ObservableObject {
                 id: .todayConsume,
                 title: "Today",
                 primary: DashboardKPIValue(display: formatAmount(todayConsume), rawNumeric: todayConsume),
-                secondary: selectedItem.defaultUnit.rawValue
+                secondary: selectedItem.effectiveTrackUnit.rawValue
             ),
             DashboardKPI(
                 id: .monthConsume,
                 title: "This month",
                 primary: DashboardKPIValue(display: formatAmount(monthConsume), rawNumeric: monthConsume),
-                secondary: selectedItem.defaultUnit.rawValue
+                secondary: selectedItem.effectiveTrackUnit.rawValue
             ),
             DashboardKPI(
                 id: .monthSpent,
