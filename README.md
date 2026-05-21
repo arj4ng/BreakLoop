@@ -36,11 +36,14 @@ Genau da setzt BreakLoop an.
 ## Was aktuell drin ist
 
 <ul>
-  <li><code>Onboarding Flow</code> → Mehrstufig, generisch für verschiedene Konsumtypen, mit Cost/Usage Baseline</li>
+  <li><code>Onboarding Flow</code> → Mehrstufig, generisch für verschiedene Konsumtypen, mit dynamischem Cost/Usage Setup</li>
   <li><code>Auth Flow</code> → Sign in, Register, Guest mit Routing über Root Flow</li>
-  <li><code>Dashboard</code> → Erste Live Übersicht mit KPIs, Sign out und Flow Integration</li>
-  <li><code>Shared Models</code> → User, Consumable, ConsumeEntry, PurchaseEntry, Rewards, Stats</li>
-  <li><code>CalculationService</code> → Kosten, Durchschnitt, Ersparnis, Reward Logik inkl. Bonus Dedupe und Unit Mapping</li>
+  <li><code>Dashboard</code> → Live Übersicht mit Overview, Activity Monitor, Cost/Consumption Cards, Chart und Custom Bottom Tabs</li>
+  <li><code>Entry Flows</code> → Slide-to-log für ConsumeEntries und Purchase Sheet für Preis, Menge und Einheit</li>
+  <li><code>Details Tab</code> → Umschaltbare Liste für Purchases und Consumes zur Kontrolle der Rohdaten</li>
+  <li><code>Settings</code> → Consumable Verwaltung mit Add/Edit/Archive und dynamischem Tracking-/Kostenmodell</li>
+  <li><code>Shared Models</code> → User, Consumable, ConsumeEntry, PurchaseEntry, Rewards, Stats und flexible Cost-Metadaten</li>
+  <li><code>CalculationService</code> → Kosten, Durchschnitt, Ersparnis, Reward Logik, Unit Mapping und Purchase-basierte Cost-per-Consume Berechnung</li>
   <li><code>Firestore Repositories</code> → CRUD für Profile, Consumables, ConsumeEntries, PurchaseEntries, Rewards</li>
   <li><code>Firebase</code> → Auth + Firestore integriert, guestUsers/users Scope vorbereitet</li>
 </ul>
@@ -94,7 +97,7 @@ BreakLoop/
   <tr>
     <td>Calculation Engine</td>
     <td>✅ Fertig</td>
-    <td>Average, Cost, Saved Money und Reward Logik implementiert</td>
+    <td>Average, Cost, Saved Money und Reward Logik mit dynamischem Cost-per-Consume Modell</td>
   </tr>
   <tr>
     <td>Firebase Setup</td>
@@ -109,12 +112,12 @@ BreakLoop/
   <tr>
     <td>Onboarding + Auth UI</td>
     <td>🟡 In Arbeit</td>
-    <td>Flow steht, laufender UX/Polish Feinschliff</td>
+    <td>Flow steht, dynamisches Consumable Setup ist angebunden, laufender UX/Polish Feinschliff</td>
   </tr>
   <tr>
     <td>Feature Screens UI</td>
     <td>🟡 In Arbeit</td>
-    <td>Dashboard erster Stand, weitere Feature Screens folgen</td>
+    <td>Dashboard, Details und Settings sind nutzbar; Editing/Insights Polish folgt</td>
   </tr>
 </table>
 
@@ -149,13 +152,13 @@ BreakLoop/
   <tr>
     <td><strong>5 · Entry Flows + Dashboard UI</strong></td>
     <td>🟡 In Arbeit</td>
-    <td>Consume/Purchase Eingabe, Dashboard Live Werte, danach Rewards/Insights Polish</td>
+    <td>Consume/Purchase Eingabe und Dashboard Live Werte stehen; Details Editing und Insights Polish folgen</td>
   </tr>
 </table>
 
 ## Aktueller Fokus
 
-- Onboarding UX finalisieren (Flow ohne harte Sprünge, klare CTA am Ende)
-- Register/SignIn sauber vom Onboarding aus öffnen und Datenübergabe stabil halten
-- Erste echte Entry Flows anbinden (<code>ConsumeEntry</code> / <code>PurchaseEntry</code>)
-- Dashboard Aktionen mit den Entry Flows verbinden
+- Details Tab ausbauen: Entries sichtbar machen, danach editierbar machen
+- Dashboard Kennzahlen anhand echter Purchase-/Consume-Daten weiter verständlich machen
+- Dynamisches Consumable Setup weiter vereinfachen und Beschriftungen nutzerfreundlicher machen
+- Tests/Scheme für ViewModel- und CalculationService Tests sauber lauffähig machen
