@@ -15,6 +15,7 @@
 */
 
 import SwiftUI
+import Combine
 
 
 // MARK: ┏━ [10 SETTINGS] SettingsView
@@ -86,8 +87,7 @@ struct SettingsView: View {
 
 private struct ConsumablesSettingsView: View {
     @ObservedObject var viewModel: SettingsViewModel
-    @State private var editedItem: ConsumableItem?
-    @State private var showsForm = false
+    @State private var formRoute: ConsumableFormRoute?
     @State private var pendingArchiveItem: ConsumableItem?
 
     var body: some View {
@@ -99,8 +99,7 @@ private struct ConsumablesSettingsView: View {
             Section {
                 ForEach(viewModel.consumables) { item in
                     Button {
-                        editedItem = item
-                        showsForm = true
+                        formRoute = ConsumableFormRoute(item: item)
                     } label: {
                         consumableRow(item)
                     }
@@ -126,16 +125,26 @@ private struct ConsumablesSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    editedItem = nil
-                    showsForm = true
+                    formRoute = ConsumableFormRoute(item: nil)
                 } label: {
                     Image(systemName: "plus")
                 }
             }
         }
-        .sheet(isPresented: $showsForm) {
-            ConsumableFormView(item: editedItem) { draft, existingItem in
-                await viewModel.saveConsumable(draft: draft, existingItem: existingItem)
+        .sheet(item: $formRoute) { route in
+            ConsumableFormView(item: route.item) { submission, existingItem in
+                await viewModel.saveConsumable(
+                    name: submission.name,
+                    category: submission.category,
+                    consumePresetName: submission.consumePresetName,
+                    defaultAmountPerConsumeText: submission.defaultAmountPerConsumeText,
+                    defaultUnit: submission.defaultUnit,
+                    usageMethod: submission.usageMethod,
+                    purchasePresetName: submission.purchasePresetName,
+                    defaultPurchaseUnit: submission.defaultPurchaseUnit,
+                    defaultUnitsPerPurchaseText: submission.defaultUnitsPerPurchaseText,
+                    existingItem: existingItem
+                )
             }
         }
         .confirmationDialog(
@@ -195,94 +204,94 @@ private struct ConsumablesSettingsView: View {
     }
 }
 
+private struct ConsumableFormRoute: Identifiable {
+    let id: String
+    let item: ConsumableItem?
+
+    init(item: ConsumableItem?) {
+        self.item = item
+        self.id = item?.id ?? "new-\(UUID().uuidString)"
+    }
+}
+
 private struct ConsumableFormView: View {
     let item: ConsumableItem?
-    let onSave: (ConsumableFormDraft, ConsumableItem?) async -> Bool
+    let onSave: (ConsumableFormSubmission, ConsumableItem?) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
-    @State private var name: String
-    @State private var category: ConsumableCategory
-    @State private var defaultUnit: ConsumeUnit
-    @State private var usageMethod: ConsumableUsageMethod
-    @State private var pricingMode: ConsumablePricingMode
-    @State private var defaultPurchaseUnit: ConsumeUnit
-    @State private var defaultUnitsPerPurchaseText: String
+    @StateObject private var form: ConsumableFormState
     @State private var isSaving = false
 
-    private var draft: ConsumableFormDraft {
-        ConsumableFormDraft(
-            name: name,
-            category: category,
-            defaultUnit: defaultUnit,
-            usageMethod: usageMethod,
-            pricingMode: pricingMode,
-            defaultPurchaseUnit: defaultPurchaseUnit,
-            defaultUnitsPerPurchaseText: defaultUnitsPerPurchaseText
-        )
+    private var consumePresets: [ConsumableSetupPreset] {
+        ConsumableSetupPresets.consumePresets(for: form.category)
     }
 
-    init(item: ConsumableItem?, onSave: @escaping (ConsumableFormDraft, ConsumableItem?) async -> Bool) {
+    private var selectedConsumePreset: ConsumableSetupPreset {
+        consumePresets.first(where: { $0.id == form.consumePresetId }) ?? ConsumableSetupPresets.fallbackPreset
+    }
+
+    private var canSave: Bool {
+        form.canSave
+    }
+
+    init(item: ConsumableItem?, onSave: @escaping (ConsumableFormSubmission, ConsumableItem?) async -> Bool) {
         self.item = item
         self.onSave = onSave
-        _name = State(initialValue: item?.name ?? "")
-        _category = State(initialValue: item?.category ?? .custom)
-        _defaultUnit = State(initialValue: item?.defaultUnit ?? .piece)
-        _usageMethod = State(initialValue: item?.usageMethod ?? .custom)
-        _pricingMode = State(initialValue: item?.pricingMode ?? .perUnit)
-        _defaultPurchaseUnit = State(initialValue: item?.defaultPurchaseUnit ?? .pack)
-        _defaultUnitsPerPurchaseText = State(initialValue: item?.defaultUnitsPerPurchase.map { String($0) } ?? "")
+        _form = StateObject(wrappedValue: ConsumableFormState(item: item))
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Basics") {
-                    TextField("Name", text: $name)
+                Section {
+                    TextField("Name", text: $form.name)
                         .textInputAutocapitalization(.words)
 
-                    Picker("Category", selection: $category) {
+                    Picker("Type", selection: $form.category) {
                         ForEach(ConsumableCategory.allCases, id: \.self) { category in
                             Text(category.rawValue.capitalized).tag(category)
                         }
                     }
 
-                    Picker("Consume unit", selection: $defaultUnit) {
+                    Picker("Consumed as", selection: $form.consumePresetId) {
+                        ForEach(consumePresets) { preset in
+                            Text(preset.title).tag(preset.id)
+                        }
+                    }
+                }
+
+                Section("One consume") {
+                    TextField("Amount", text: $form.defaultAmountPerConsumeText)
+                        .keyboardType(.decimalPad)
+
+                    Picker("Unit", selection: $form.defaultUnit) {
                         ForEach(ConsumeUnit.allCases, id: \.self) { unit in
                             Text(unit.rawValue.capitalized).tag(unit)
                         }
                     }
                 }
 
-                Section("Dynamic") {
-                    Picker("Usage method", selection: $usageMethod) {
-                        Text("Per piece").tag(ConsumableUsageMethod.perPiece)
-                        Text("Per session").tag(ConsumableUsageMethod.perSession)
-                        Text("Per gram").tag(ConsumableUsageMethod.perGram)
-                        Text("Per ml").tag(ConsumableUsageMethod.perMilliliter)
-                        Text("Per cup").tag(ConsumableUsageMethod.perCup)
-                        Text("Per dose").tag(ConsumableUsageMethod.perDose)
-                        Text("Custom").tag(ConsumableUsageMethod.custom)
-                    }
+                Section("Bought as") {
+                    TextField("Package name", text: $form.purchasePresetName)
+                        .textInputAutocapitalization(.words)
 
-                    Picker("Pricing", selection: $pricingMode) {
-                        Text("Per unit").tag(ConsumablePricingMode.perUnit)
-                        Text("Per purchase").tag(ConsumablePricingMode.perPurchase)
-                    }
-                    .pickerStyle(.segmented)
+                    TextField("Amount inside", text: $form.defaultUnitsPerPurchaseText)
+                        .keyboardType(.decimalPad)
 
-                    if pricingMode == .perPurchase {
-                        Picker("Purchase unit", selection: $defaultPurchaseUnit) {
-                            ForEach(ConsumeUnit.allCases, id: \.self) { unit in
-                                Text(unit.rawValue.capitalized).tag(unit)
-                            }
+                    Picker("Unit inside", selection: $form.defaultPurchaseUnit) {
+                        ForEach(ConsumeUnit.allCases, id: \.self) { unit in
+                            Text(unit.rawValue.capitalized).tag(unit)
                         }
-
-                        TextField("Units per purchase", text: $defaultUnitsPerPurchaseText)
-                            .keyboardType(.decimalPad)
                     }
                 }
             }
             .navigationTitle(item == nil ? "Add Consumable" : "Edit Consumable")
+            .onChange(of: form.category) { _, newCategory in
+                form.applyDefaults(for: newCategory)
+            }
+            .onChange(of: form.consumePresetId) { _, _ in
+                form.applyPreset(selectedConsumePreset)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -294,16 +303,104 @@ private struct ConsumableFormView: View {
                     Button("Save") {
                         Task {
                             isSaving = true
-                            let saved = await onSave(draft, item)
+                            let saved = await onSave(form.makeSubmission(selectedPreset: selectedConsumePreset), item)
                             isSaving = false
                             if saved {
                                 dismiss()
                             }
                         }
                     }
-                    .disabled(!draft.isValid || isSaving)
+                    .disabled(!canSave || isSaving)
                 }
             }
+        }
+    }
+}
+
+private struct ConsumableFormSubmission {
+    let name: String
+    let category: ConsumableCategory
+    let consumePresetName: String
+    let defaultAmountPerConsumeText: String
+    let defaultUnit: ConsumeUnit
+    let usageMethod: ConsumableUsageMethod
+    let purchasePresetName: String
+    let defaultPurchaseUnit: ConsumeUnit
+    let defaultUnitsPerPurchaseText: String
+}
+
+@MainActor
+private final class ConsumableFormState: ObservableObject {
+    @Published var name: String
+    @Published var category: ConsumableCategory
+    @Published var consumePresetId: String
+    @Published var defaultAmountPerConsumeText: String
+    @Published var defaultUnit: ConsumeUnit
+    @Published var usageMethod: ConsumableUsageMethod
+    @Published var purchasePresetName: String
+    @Published var defaultPurchaseUnit: ConsumeUnit
+    @Published var defaultUnitsPerPurchaseText: String
+
+    init(item: ConsumableItem?) {
+        let category = item?.category ?? .custom
+        let presets = ConsumableSetupPresets.consumePresets(for: category)
+        let matchedPreset = presets.first { $0.title == item?.consumePresetName } ?? presets.first ?? ConsumableSetupPresets.fallbackPreset
+
+        self.name = item?.name ?? ""
+        self.category = category
+        self.consumePresetId = matchedPreset.id
+        self.defaultAmountPerConsumeText = item?.defaultAmountPerConsume.map { String($0) } ?? matchedPreset.defaultAmountText
+        self.defaultUnit = item?.defaultUnit ?? matchedPreset.unit
+        self.usageMethod = item?.usageMethod ?? matchedPreset.usageMethod
+        self.purchasePresetName = item?.purchasePresetName ?? Self.defaultPurchaseName(for: matchedPreset)
+        self.defaultPurchaseUnit = item?.defaultPurchaseUnit ?? matchedPreset.purchaseUnit
+        self.defaultUnitsPerPurchaseText = item?.defaultUnitsPerPurchase.map { String($0) } ?? matchedPreset.purchaseAmountText
+    }
+
+    var canSave: Bool {
+        let hasName = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let consumeAmount = Double(defaultAmountPerConsumeText.replacingOccurrences(of: ",", with: "."))
+        let purchaseAmount = Double(defaultUnitsPerPurchaseText.replacingOccurrences(of: ",", with: "."))
+        return hasName && (consumeAmount ?? 0) > 0 && (purchaseAmount ?? 0) > 0
+    }
+
+    func makeSubmission(selectedPreset: ConsumableSetupPreset) -> ConsumableFormSubmission {
+        ConsumableFormSubmission(
+            name: name,
+            category: category,
+            consumePresetName: selectedPreset.title,
+            defaultAmountPerConsumeText: defaultAmountPerConsumeText,
+            defaultUnit: defaultUnit,
+            usageMethod: usageMethod,
+            purchasePresetName: purchasePresetName,
+            defaultPurchaseUnit: defaultPurchaseUnit,
+            defaultUnitsPerPurchaseText: defaultUnitsPerPurchaseText
+        )
+    }
+
+    func applyDefaults(for category: ConsumableCategory) {
+        let preset = ConsumableSetupPresets.consumePresets(for: category).first ?? ConsumableSetupPresets.fallbackPreset
+        consumePresetId = preset.id
+        applyPreset(preset)
+    }
+
+    func applyPreset(_ preset: ConsumableSetupPreset) {
+        defaultAmountPerConsumeText = preset.defaultAmountText
+        defaultUnit = preset.unit
+        usageMethod = preset.usageMethod
+        purchasePresetName = Self.defaultPurchaseName(for: preset)
+        defaultPurchaseUnit = preset.purchaseUnit
+        defaultUnitsPerPurchaseText = preset.purchaseAmountText
+    }
+
+    private static func defaultPurchaseName(for preset: ConsumableSetupPreset) -> String {
+        switch preset.purchaseUnit {
+        case .pack: return "Pack"
+        case .gram: return "Bag"
+        case .milliliter: return "Bottle"
+        case .cup: return "Box"
+        case .dose: return "Box"
+        case .piece, .other: return "Package"
         }
     }
 }

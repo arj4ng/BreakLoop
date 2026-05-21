@@ -72,6 +72,12 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
 
     var note: String?
 
+    // ui preset für verständliche consume anzeige zB joint, gum, beer
+    var consumePresetName: String?
+
+    // ui preset für verständliche purchase anzeige zB bag, pack, bottle
+    var purchasePresetName: String?
+
     // creation timestamp für sortierung
     var createdAt: Date
 
@@ -94,6 +100,8 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         defaultUnitsPerPurchase: Double? = nil,
         defaultCostPerConsume: Decimal? = nil,
         note: String? = nil,
+        consumePresetName: String? = nil,
+        purchasePresetName: String? = nil,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         isArchived: Bool = false
@@ -112,6 +120,8 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         self.defaultUnitsPerPurchase = defaultUnitsPerPurchase.map { max(0, $0) }
         self.defaultCostPerConsume = defaultCostPerConsume
         self.note = note
+        self.consumePresetName = consumePresetName
+        self.purchasePresetName = purchasePresetName
 
         // createdAt bleibt original erstellzeitpunkt
         self.createdAt = createdAt

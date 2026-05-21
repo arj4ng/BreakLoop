@@ -289,6 +289,8 @@ final class FirestoreTrackingRepository:
                 defaultUnitsPerPurchase: item.defaultUnitsPerPurchase,
                 defaultCostPerConsume: item.defaultCostPerConsume,
                 note: item.note,
+                consumePresetName: item.consumePresetName,
+                purchasePresetName: item.purchasePresetName,
                 createdAt: item.createdAt,
                 updatedAt: .now,
                 isArchived: item.isArchived
@@ -432,6 +434,8 @@ final class FirestoreTrackingRepository:
             "defaultUnitsPerPurchase": value.defaultUnitsPerPurchase as Any,
             "defaultCostPerConsume": decimalToNumber(value.defaultCostPerConsume) as Any,
             "note": value.note as Any,
+            "consumePresetName": value.consumePresetName as Any,
+            "purchasePresetName": value.purchasePresetName as Any,
             "createdAt": Timestamp(date: value.createdAt),
             "updatedAt": Timestamp(date: value.updatedAt),
             "isArchived": value.isArchived
@@ -573,6 +577,8 @@ final class FirestoreTrackingRepository:
             defaultUnitsPerPurchase: data["defaultUnitsPerPurchase"] as? Double,
             defaultCostPerConsume: numberToDecimal(data["defaultCostPerConsume"]),
             note: data["note"] as? String,
+            consumePresetName: data["consumePresetName"] as? String,
+            purchasePresetName: data["purchasePresetName"] as? String,
             createdAt: timestampToDate(data["createdAt"]) ?? .now,
             updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
             isArchived: data["isArchived"] as? Bool ?? false

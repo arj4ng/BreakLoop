@@ -54,8 +54,28 @@ final class SettingsViewModel: ObservableObject {
     }
 
     // async: Firestore save wartet ohne ui thread zu blockieren
-    func saveConsumable(draft: ConsumableFormDraft, existingItem: ConsumableItem?) async -> Bool {
-        guard draft.isValid else {
+    func saveConsumable(
+        name: String,
+        category: ConsumableCategory,
+        consumePresetName: String,
+        defaultAmountPerConsumeText: String,
+        defaultUnit: ConsumeUnit,
+        usageMethod: ConsumableUsageMethod,
+        purchasePresetName: String,
+        defaultPurchaseUnit: ConsumeUnit,
+        defaultUnitsPerPurchaseText: String,
+        existingItem: ConsumableItem?
+    ) async -> Bool {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parsedAmountPerConsume = Double(defaultAmountPerConsumeText.replacingOccurrences(of: ",", with: "."))
+        let parsedUnitsPerPurchase = Double(defaultUnitsPerPurchaseText.replacingOccurrences(of: ",", with: "."))
+
+        guard !trimmedName.isEmpty,
+              let parsedAmountPerConsume,
+              parsedAmountPerConsume > 0,
+              let parsedUnitsPerPurchase,
+              parsedUnitsPerPurchase > 0
+        else {
             message = "Check consumable form"
             return false
         }
@@ -64,16 +84,18 @@ final class SettingsViewModel: ObservableObject {
         let item = ConsumableItem(
             id: existingItem?.id ?? UUID().uuidString,
             userId: userId,
-            name: draft.trimmedName,
-            category: draft.category,
-            defaultUnit: draft.defaultUnit,
-            usageMethod: draft.usageMethod,
-            pricingMode: draft.pricingMode,
-            defaultPurchaseUnit: draft.pricingMode == .perPurchase ? draft.defaultPurchaseUnit : nil,
-            defaultAmountPerConsume: existingItem?.defaultAmountPerConsume ?? 1,
-            defaultUnitsPerPurchase: draft.pricingMode == .perPurchase ? draft.parsedUnitsPerPurchase : nil,
+            name: trimmedName,
+            category: category,
+            defaultUnit: defaultUnit,
+            usageMethod: usageMethod,
+            pricingMode: .perPurchase,
+            defaultPurchaseUnit: defaultPurchaseUnit,
+            defaultAmountPerConsume: parsedAmountPerConsume,
+            defaultUnitsPerPurchase: parsedUnitsPerPurchase,
             defaultCostPerConsume: existingItem?.defaultCostPerConsume,
             note: existingItem?.note,
+            consumePresetName: consumePresetName,
+            purchasePresetName: purchasePresetName.trimmingCharacters(in: .whitespacesAndNewlines),
             createdAt: existingItem?.createdAt ?? now,
             updatedAt: now,
             isArchived: false

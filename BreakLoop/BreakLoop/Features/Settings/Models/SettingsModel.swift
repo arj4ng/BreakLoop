@@ -22,64 +22,92 @@ import Foundation
 
 struct SettingsModel {}
 
-// form draft trennt ui input von firestore modell
-struct ConsumableFormDraft: Hashable {
-    var name: String
-    var category: ConsumableCategory
-    var defaultUnit: ConsumeUnit
-    var usageMethod: ConsumableUsageMethod
-    var pricingMode: ConsumablePricingMode
-    var defaultPurchaseUnit: ConsumeUnit
-    var defaultUnitsPerPurchaseText: String
+struct ConsumableSetupPreset: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let unit: ConsumeUnit
+    let usageMethod: ConsumableUsageMethod
+    let defaultAmountText: String
+    let purchaseUnit: ConsumeUnit
+    let purchaseAmountText: String
 
-    init(
-        name: String = "",
-        category: ConsumableCategory = .custom,
-        defaultUnit: ConsumeUnit = .piece,
-        usageMethod: ConsumableUsageMethod = .custom,
-        pricingMode: ConsumablePricingMode = .perUnit,
-        defaultPurchaseUnit: ConsumeUnit = .pack,
-        defaultUnitsPerPurchaseText: String = ""
-    ) {
-        self.name = name
-        self.category = category
-        self.defaultUnit = defaultUnit
-        self.usageMethod = usageMethod
-        self.pricingMode = pricingMode
-        self.defaultPurchaseUnit = defaultPurchaseUnit
-        self.defaultUnitsPerPurchaseText = defaultUnitsPerPurchaseText
-    }
-
-    init(item: ConsumableItem) {
-        self.init(
-            name: item.name,
-            category: item.category,
-            defaultUnit: item.defaultUnit,
-            usageMethod: item.usageMethod,
-            pricingMode: item.pricingMode,
-            defaultPurchaseUnit: item.defaultPurchaseUnit ?? .pack,
-            defaultUnitsPerPurchaseText: item.defaultUnitsPerPurchase.map { String($0) } ?? ""
-        )
-    }
-
-    var trimmedName: String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    var parsedUnitsPerPurchase: Double? {
-        Double(defaultUnitsPerPurchaseText.replacingOccurrences(of: ",", with: "."))
-    }
-
-    var isValid: Bool {
-        guard !trimmedName.isEmpty else { return false }
-        if pricingMode == .perPurchase {
-            guard let parsedUnitsPerPurchase, parsedUnitsPerPurchase > 0 else { return false }
-        }
-        return true
+    var defaultAmount: Double {
+        Double(defaultAmountText.replacingOccurrences(of: ",", with: ".")) ?? 1
     }
 }
 
-struct SettingsConsumableFormResult: Hashable {
-    var draft: ConsumableFormDraft
-    var existingItem: ConsumableItem?
+enum ConsumableSetupPresets {
+    static var fallbackPreset: ConsumableSetupPreset {
+        ConsumableSetupPreset(
+            id: "custom",
+            title: "Custom",
+            unit: .piece,
+            usageMethod: .custom,
+            defaultAmountText: "1",
+            purchaseUnit: .piece,
+            purchaseAmountText: "1"
+        )
+    }
+
+    static func consumePresets(for category: ConsumableCategory) -> [ConsumableSetupPreset] {
+        switch category {
+        case .cannabis:
+            return [
+                preset("joint", "Joint", .piece, .perPiece, "1", .gram, "5"),
+                preset("gram", "Gram", .gram, .perGram, "0.3", .gram, "5"),
+                preset("edible", "Edible", .piece, .perPiece, "1", .piece, "10"),
+                preset("vapeHit", "Vape hit", .piece, .perPiece, "1", .gram, "1")
+            ]
+        case .nicotine:
+            return [
+                preset("cigarette", "Cigarette", .piece, .perPiece, "1", .pack, "20"),
+                preset("gum", "Gum", .piece, .perPiece, "1", .pack, "30"),
+                preset("pouch", "Pouch", .piece, .perPiece, "1", .pack, "20"),
+                preset("vapePuff", "Vape puff", .piece, .perPiece, "5", .milliliter, "10"),
+                preset("tobaccoGram", "Tobacco gram", .gram, .perGram, "1", .gram, "30")
+            ]
+        case .alcohol:
+            return [
+                preset("beer", "Beer", .milliliter, .perMilliliter, "500", .milliliter, "500"),
+                preset("wine", "Wine glass", .milliliter, .perMilliliter, "150", .milliliter, "750"),
+                preset("shot", "Shot", .milliliter, .perMilliliter, "40", .milliliter, "700"),
+                preset("cocktail", "Cocktail", .piece, .perPiece, "1", .piece, "1")
+            ]
+        case .caffeine:
+            return [
+                preset("coffee", "Coffee", .cup, .perCup, "1", .gram, "500"),
+                preset("energyDrink", "Energy drink", .piece, .perPiece, "1", .piece, "1"),
+                preset("tea", "Tea", .cup, .perCup, "1", .piece, "20"),
+                preset("pill", "Caffeine pill", .dose, .perDose, "1", .dose, "100")
+            ]
+        case .medicine:
+            return [
+                preset("pill", "Pill", .dose, .perDose, "1", .dose, "30"),
+                preset("dose", "Dose", .dose, .perDose, "1", .dose, "1"),
+                preset("ml", "Milliliter", .milliliter, .perMilliliter, "5", .milliliter, "100")
+            ]
+        case .custom:
+            return [preset("custom", "Custom", .piece, .custom, "1", .piece, "1")]
+        }
+    }
+
+    private static func preset(
+        _ id: String,
+        _ title: String,
+        _ unit: ConsumeUnit,
+        _ usageMethod: ConsumableUsageMethod,
+        _ defaultAmountText: String,
+        _ purchaseUnit: ConsumeUnit,
+        _ purchaseAmountText: String
+    ) -> ConsumableSetupPreset {
+        ConsumableSetupPreset(
+            id: id,
+            title: title,
+            unit: unit,
+            usageMethod: usageMethod,
+            defaultAmountText: defaultAmountText,
+            purchaseUnit: purchaseUnit,
+            purchaseAmountText: purchaseAmountText
+        )
+    }
 }

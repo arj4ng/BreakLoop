@@ -282,6 +282,8 @@ struct RootView: View {
                 defaultUnitsPerPurchase: draft.firstConsumableUnitsPerPurchase,
                 defaultCostPerConsume: draft.baselineCostPerConsume,
                 note: nil,
+                consumePresetName: draft.firstConsumableUsageMethod.rawValue,
+                purchasePresetName: draft.firstConsumablePurchaseUnit == nil ? nil : "Purchase",
                 createdAt: .now,
                 updatedAt: .now,
                 isArchived: false

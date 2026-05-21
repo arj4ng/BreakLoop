@@ -214,6 +214,8 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
             defaultUnitsPerPurchase: data["defaultUnitsPerPurchase"] as? Double,
             defaultCostPerConsume: numberToDecimal(data["defaultCostPerConsume"]),
             note: data["note"] as? String,
+            consumePresetName: data["consumePresetName"] as? String,
+            purchasePresetName: data["purchasePresetName"] as? String,
             createdAt: timestampToDate(data["createdAt"]) ?? .now,
             updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
             isArchived: data["isArchived"] as? Bool ?? false
