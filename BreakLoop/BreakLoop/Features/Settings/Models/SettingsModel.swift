@@ -22,6 +22,18 @@ import Foundation
 
 struct SettingsModel {}
 
+struct ConsumableFormSubmission: Hashable, Sendable {
+    let name: String
+    let category: ConsumableCategory
+    let consumePresetName: String
+    let defaultAmountPerConsumeText: String
+    let defaultUnit: ConsumeUnit
+    let usageMethod: ConsumableUsageMethod
+    let purchasePresetName: String
+    let defaultPurchaseUnit: ConsumeUnit
+    let defaultUnitsPerPurchaseText: String
+}
+
 struct ConsumableSetupPreset: Identifiable, Hashable {
     let id: String
     let title: String

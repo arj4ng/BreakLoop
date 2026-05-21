@@ -216,7 +216,7 @@ private struct ConsumableFormRoute: Identifiable {
 
 private struct ConsumableFormView: View {
     let item: ConsumableItem?
-    let onSave: (ConsumableFormSubmission, ConsumableItem?) async -> Bool
+    let onSave: @MainActor (ConsumableFormSubmission, ConsumableItem?) async -> Bool
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var form: ConsumableFormState
@@ -234,7 +234,7 @@ private struct ConsumableFormView: View {
         form.canSave
     }
 
-    init(item: ConsumableItem?, onSave: @escaping (ConsumableFormSubmission, ConsumableItem?) async -> Bool) {
+    init(item: ConsumableItem?, onSave: @escaping @MainActor (ConsumableFormSubmission, ConsumableItem?) async -> Bool) {
         self.item = item
         self.onSave = onSave
         _form = StateObject(wrappedValue: ConsumableFormState(item: item))
@@ -301,10 +301,14 @@ private struct ConsumableFormView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        Task {
-                            isSaving = true
-                            let saved = await onSave(form.makeSubmission(selectedPreset: selectedConsumePreset), item)
+                        let submission = form.makeSubmission(selectedPreset: selectedConsumePreset)
+                        let existingItem = item
+                        isSaving = true
+
+                        Task { @MainActor in
+                            let saved = await onSave(submission, existingItem)
                             isSaving = false
+
                             if saved {
                                 dismiss()
                             }
@@ -315,18 +319,6 @@ private struct ConsumableFormView: View {
             }
         }
     }
-}
-
-private struct ConsumableFormSubmission {
-    let name: String
-    let category: ConsumableCategory
-    let consumePresetName: String
-    let defaultAmountPerConsumeText: String
-    let defaultUnit: ConsumeUnit
-    let usageMethod: ConsumableUsageMethod
-    let purchasePresetName: String
-    let defaultPurchaseUnit: ConsumeUnit
-    let defaultUnitsPerPurchaseText: String
 }
 
 @MainActor
