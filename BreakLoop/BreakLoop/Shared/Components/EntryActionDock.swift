@@ -167,8 +167,14 @@ private struct PressHoldActionButton<Content: View>: View {
 
             ZStack(alignment: .leading) {
                 content()
-                    .opacity(isSliding ? 0 : 1)
+                    .opacity(1)
                     .animation(.easeInOut(duration: 0.12), value: isSliding)
+                    .overlay {
+                        if isSliding {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .fill(AppColors.surfaceElevated.opacity(0.92))
+                        }
+                    }
                 progressFillOverlay(progress: progress, dragOffset: dragOffset, handleInset: handleInset)
                 slideTextOverlay(progress: progress, dragOffset: dragOffset)
 
@@ -201,9 +207,6 @@ private struct PressHoldActionButton<Content: View>: View {
                 LongPressGesture(minimumDuration: 0, maximumDistance: 30)
                     .updating($isPressed) { _, state, _ in state = true }
             )
-            .onChange(of: progress) { _, newValue in
-                onProgress?(CGFloat(newValue))
-            }
             .onChange(of: isPressed) { oldValue, pressed in
                 if !pressed && !didComplete {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
@@ -240,11 +243,11 @@ private struct PressHoldActionButton<Content: View>: View {
                 let anchor = dragAnchor ?? 0
                 let x = anchor + value.translation.width
                 dragOffset = max(0, min(maxTravel, x))
+                onProgress?(currentProgress(maxTravel: maxTravel))
             }
             .onEnded { _ in
                 dragAnchor = nil
-                let progressCG: CGFloat = (maxTravel > 0) ? (dragOffset / maxTravel) : 0
-                let progress = Double(max(0, min(1, progressCG)))
+                let progress = Double(currentProgress(maxTravel: maxTravel))
 
                 if progress >= 0.98 {
                     complete()
@@ -253,7 +256,12 @@ private struct PressHoldActionButton<Content: View>: View {
                         dragOffset = 0
                     }
                 }
-            }
+        }
+    }
+
+    private func currentProgress(maxTravel: CGFloat) -> CGFloat {
+        guard maxTravel > 0 else { return 0 }
+        return max(0, min(1, dragOffset / maxTravel))
     }
 
     private func complete() {

@@ -45,6 +45,7 @@ struct DashboardView: View {
     @State private var selectedTab: DashboardTab = .dashboard
     @State private var isPurchaseSheetPresented = false
     @State private var selectedChartPeriod: DashboardChartPeriod = .daily
+    @State private var selectedDetailsMode: DashboardDetailsMode = .purchases
     let onSignOut: () -> Void
 
     init(userId: String, scope: FirestoreAccountScope, onSignOut: @escaping () -> Void) {
@@ -439,16 +440,86 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 14) {
             consumablePicker
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Entry history")
-                    .appTypography(AppTypography.headline)
-                    .foregroundStyle(AppColors.textPrimary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(AppColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            detailsSummary
+            detailsModePicker
+            selectedDetailsList
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var detailsSummary: some View {
+        LazyVGrid(columns: dashboardColumns, spacing: 10) {
+            DashboardStatCard(
+                title: "Purchases",
+                value: "\(selectedPurchases.count)",
+                indicatorColor: AppColors.accent,
+                indicatorSymbol: "cart.fill",
+                valueFont: .system(size: 24, weight: .bold)
+            )
+
+            DashboardStatCard(
+                title: "Consumes",
+                value: "\(selectedEntries.count)",
+                indicatorColor: Color.purple,
+                indicatorSymbol: "plus.circle.fill",
+                valueFont: .system(size: 24, weight: .bold)
+            )
+        }
+    }
+
+    private var detailsModePicker: some View {
+        Picker("Entries", selection: $selectedDetailsMode) {
+            ForEach(DashboardDetailsMode.allCases) { mode in
+                Text(mode.rawValue).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder
+    private var selectedDetailsList: some View {
+        switch selectedDetailsMode {
+        case .purchases:
+            purchaseEntryList
+        case .consumes:
+            consumeEntryList
+        }
+    }
+
+    private var purchaseEntryList: some View {
+        DashboardEntrySection(title: "Purchases") {
+            if selectedPurchases.isEmpty {
+                detailEmptyRow("No purchases yet")
+            } else {
+                ForEach(selectedPurchases.sorted { $0.purchaseDate > $1.purchaseDate }) { purchase in
+                    detailRow(
+                        icon: "cart.fill",
+                        color: AppColors.accent,
+                        title: formatMoney(purchase.price),
+                        subtitle: "\(formatAmount(purchase.quantity)) \(purchase.unit.rawValue) • \(formatDateTime(purchase.purchaseDate))",
+                        trailing: costPerUnitText(purchase)
+                    )
+                }
+            }
+        }
+    }
+
+    private var consumeEntryList: some View {
+        DashboardEntrySection(title: "Consumes") {
+            if selectedEntries.isEmpty {
+                detailEmptyRow("No consumes yet")
+            } else {
+                ForEach(selectedEntries.sorted { $0.timestamp > $1.timestamp }) { entry in
+                    detailRow(
+                        icon: "plus.circle.fill",
+                        color: Color.purple,
+                        title: "\(formatAmount(entry.amount)) \(entry.unit.rawValue)",
+                        subtitle: formatDateTime(entry.timestamp),
+                        trailing: nil
+                    )
+                }
+            }
+        }
     }
 
     private var dashboardColumns: [GridItem] {
@@ -528,6 +599,62 @@ struct DashboardView: View {
         return formatAmount(doubleValue)
     }
 
+    private func formatDateTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    private func costPerUnitText(_ purchase: PurchaseEntry) -> String {
+        guard purchase.calculatedCostPerUnit > 0 else { return "—" }
+        return "\(formatMoney(purchase.calculatedCostPerUnit))/\(purchase.unit.rawValue)"
+    }
+
+    private func detailEmptyRow(_ text: String) -> some View {
+        Text(text)
+            .appTypography(AppTypography.caption1)
+            .foregroundStyle(AppColors.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+    }
+
+    private func detailRow(
+        icon: String,
+        color: Color,
+        title: String,
+        subtitle: String,
+        trailing: String?
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .appTypography(AppTypography.bodyEmphasis)
+                    .foregroundStyle(AppColors.textPrimary)
+
+                Text(subtitle)
+                    .appTypography(AppTypography.caption2)
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Spacer(minLength: 8)
+
+            if let trailing {
+                Text(trailing)
+                    .appTypography(AppTypography.caption1)
+                    .foregroundStyle(AppColors.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
     @ViewBuilder
     private var entryActionToast: some View {
         if let message = viewModel.entryActionMessage {
@@ -569,6 +696,13 @@ private enum DashboardChartPeriod: String, CaseIterable, Identifiable {
     case daily = "Daily"
     case weekly = "Weekly"
     case monthly = "Monthly"
+
+    var id: String { rawValue }
+}
+
+private enum DashboardDetailsMode: String, CaseIterable, Identifiable {
+    case purchases = "Purchases"
+    case consumes = "Consumes"
 
     var id: String { rawValue }
 }
@@ -805,6 +939,31 @@ private struct DashboardUsageChartCard: View {
                 .reduce(0) { $0 + $1.amount }
 
             return DashboardChartPoint(date: start, value: total)
+        }
+    }
+}
+
+private struct DashboardEntrySection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(AppColors.textPrimary)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.14), radius: 2, x: 0, y: 2)
         }
     }
 }
