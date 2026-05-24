@@ -66,6 +66,7 @@ struct DashboardView: View {
     @State private var pendingStartQuitItem: ConsumableItem?
     @State private var pendingStartQuitDate: Date = .now
     @StateObject private var settingsViewModel: SettingsViewModel
+    @Environment(\.colorScheme) private var colorScheme
     let onSignOut: () -> Void
 
     init(userId: String, scope: FirestoreAccountScope, onSignOut: @escaping () -> Void) {
@@ -435,10 +436,11 @@ struct DashboardView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity)
+        .background((colorScheme == .light ? Color(.systemBackground) : Color.clear), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+                .stroke(AppColors.border.opacity(colorScheme == .light ? 0.32 : 0.16), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.14), radius: 2, x: 0, y: 2)
     }
@@ -489,10 +491,11 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
+        .background((colorScheme == .light ? Color(.systemBackground) : Color.clear), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+                .stroke(AppColors.border.opacity(colorScheme == .light ? 0.32 : 0.16), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.14), radius: 2, x: 0, y: 2)
     }
@@ -1317,6 +1320,7 @@ private struct QuitStreakModule: Identifiable {
 
 private struct QuitPlanStreakCard: View {
     let module: QuitStreakModule
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 6) {
@@ -1334,10 +1338,11 @@ private struct QuitPlanStreakCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .padding(16)
         .frame(height: 98)
+        .background((colorScheme == .light ? Color(.systemBackground) : Color.clear), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+                .stroke(AppColors.border.opacity(colorScheme == .light ? 0.32 : 0.16), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.14), radius: 2, x: 0, y: 2)
     }
@@ -1347,6 +1352,7 @@ private struct QuitPlanStatCard: View {
     let systemImage: String
     let title: String
     let value: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 14) {
@@ -1372,10 +1378,11 @@ private struct QuitPlanStatCard: View {
             Spacer()
         }
         .padding(16)
+        .background((colorScheme == .light ? Color(.systemBackground) : Color.clear), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+                .stroke(AppColors.border.opacity(colorScheme == .light ? 0.32 : 0.16), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.14), radius: 2, x: 0, y: 2)
         .frame(maxWidth: .infinity)
@@ -1451,6 +1458,7 @@ private struct DashboardStatCard: View {
     var indicatorSymbol: String? = nil
     var height: CGFloat = 80
     var valueFont: Font = .title2.weight(.bold)
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -1478,10 +1486,11 @@ private struct DashboardStatCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, minHeight: height, idealHeight: height, maxHeight: height, alignment: .leading)
+        .background((colorScheme == .light ? Color(.systemBackground) : Color.clear), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+                .stroke(AppColors.border.opacity(colorScheme == .light ? 0.32 : 0.16), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.14), radius: 2, x: 0, y: 2)
     }
