@@ -16,6 +16,7 @@
 
 import Foundation
 import Combine
+import FirebaseAuth
 
 
 // MARK: ┏━ [10 SETTINGS] SettingsViewModel
@@ -24,6 +25,7 @@ import Combine
 // main actor: settings state wird direkt von SwiftUI gelesen
 @MainActor
 final class SettingsViewModel: ObservableObject {
+    @Published private(set) var profile: UserProfile?
     @Published private(set) var consumables: [ConsumableItem] = []
     @Published private(set) var quitPlans: [QuitPlan] = []
     @Published private(set) var isLoading = false
@@ -54,6 +56,78 @@ final class SettingsViewModel: ObservableObject {
             quitPlans = try await loadedPlans
         } catch {
             message = error.localizedDescription
+        }
+    }
+
+    func loadProfile() async {
+        do {
+            profile = try await service.fetchUserProfile(userId: userId, scope: scope)
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    func saveProfile(displayName: String) async -> Bool {
+        guard var profile else {
+            message = "Profile not found"
+            return false
+        }
+
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            message = "Name cannot be empty"
+            return false
+        }
+
+        profile.displayName = trimmed
+        profile.updatedAt = .now
+
+        do {
+            try await service.saveUserProfile(profile, scope: scope)
+            self.profile = profile
+            message = "Profile updated"
+            return true
+        } catch {
+            message = error.localizedDescription
+            return false
+        }
+    }
+
+    func changePassword(currentPassword: String, newPassword: String) async -> Bool {
+        let current = currentPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !current.isEmpty else {
+            message = "Current password required"
+            return false
+        }
+
+        guard newPassword.count >= 6 else {
+            message = "New password must be at least 6 characters"
+            return false
+        }
+
+        do {
+            guard let user = Auth.auth().currentUser, let email = user.email else {
+                message = "No signed-in account"
+                return false
+            }
+
+            let credential = EmailAuthProvider.credential(withEmail: email, password: current)
+            _ = try await user.reauthenticate(with: credential)
+            try await user.updatePassword(to: newPassword)
+            message = "Password updated"
+            return true
+        } catch {
+            let nsError = error as NSError
+            if nsError.code == AuthErrorCode.wrongPassword.rawValue {
+                message = "Current password is incorrect"
+            } else if nsError.code == AuthErrorCode.weakPassword.rawValue {
+                message = "New password is too weak"
+            } else if nsError.code == AuthErrorCode.networkError.rawValue {
+                message = "Network issue. Try again."
+            } else {
+                message = error.localizedDescription
+            }
+            return false
         }
     }
 

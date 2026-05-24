@@ -23,6 +23,9 @@ import Combine
 
 struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
+    @State private var isProfileSheetPresented = false
+    @State private var isRegisterSheetPresented = false
+    private let authService: AuthServiceProtocol = FirebaseAuthService()
     let onSignOut: () -> Void
 
     init(userId: String, scope: FirestoreAccountScope, onSignOut: @escaping () -> Void = {}) {
@@ -42,7 +45,12 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    settingsRow(icon: "person.crop.circle", title: "Profile")
+                    Button {
+                        isProfileSheetPresented = true
+                    } label: {
+                        settingsRow(icon: "person.crop.circle", title: "Profile", subtitle: viewModel.profile?.displayName)
+                    }
+                    .buttonStyle(.plain)
                     settingsRow(icon: "bell.badge", title: "Notifications")
                     settingsRow(icon: "externaldrive", title: "Data")
                 }
@@ -60,6 +68,26 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .task {
                 await viewModel.loadConsumables()
+                await viewModel.loadProfile()
+            }
+            .sheet(isPresented: $isProfileSheetPresented) {
+                ProfileSettingsSheet(
+                    viewModel: viewModel,
+                    onInviteSignup: {
+                        isProfileSheetPresented = false
+                        isRegisterSheetPresented = true
+                    }
+                )
+            }
+            .sheet(isPresented: $isRegisterSheetPresented) {
+                RegisterView(authService: authService, onRegistered: {
+                    isRegisterSheetPresented = false
+                    Task {
+                        await viewModel.loadProfile()
+                    }
+                }, onClose: {
+                    isRegisterSheetPresented = false
+                })
             }
         }
     }
@@ -79,6 +107,112 @@ struct SettingsView: View {
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(AppColors.textSecondary)
+                }
+            }
+        }
+    }
+}
+
+private struct ProfileSettingsSheet: View {
+    @ObservedObject var viewModel: SettingsViewModel
+    let onInviteSignup: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var displayName = ""
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var isSavingProfile = false
+    @State private var isChangingPassword = false
+
+    private var isGuest: Bool { viewModel.profile?.isGuestAccount ?? false }
+    private var emailText: String { viewModel.profile?.email ?? "No email" }
+    private var canSaveProfile: Bool {
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSavingProfile
+    }
+    private var canChangePassword: Bool {
+        !currentPassword.isEmpty &&
+        !newPassword.isEmpty &&
+        newPassword == confirmPassword &&
+        newPassword.count >= 6 &&
+        !isChangingPassword
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if isGuest {
+                    Section("Profile") {
+                        Text("Guest account")
+                            .font(.headline)
+                        Text("Create an account to edit profile settings and security.")
+                            .foregroundStyle(AppColors.textSecondary)
+
+                        Button("Sign up") {
+                            onInviteSignup()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppColors.accent)
+                    }
+                } else {
+                    Section("Profile Info") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Display name")
+                                .font(.caption)
+                                .foregroundStyle(AppColors.textSecondary)
+
+                            TextField("Display name", text: $displayName)
+                                .textInputAutocapitalization(.words)
+                        }
+                        LabeledContent("Email", value: emailText)
+                            .foregroundStyle(AppColors.textSecondary)
+
+                        Button(isSavingProfile ? "Saving..." : "Save profile") {
+                            Task {
+                                isSavingProfile = true
+                                let saved = await viewModel.saveProfile(displayName: displayName)
+                                isSavingProfile = false
+                                if saved { dismiss() }
+                            }
+                        }
+                        .disabled(!canSaveProfile)
+                    }
+
+                    Section("Security") {
+                        SecureField("Current password", text: $currentPassword)
+                        SecureField("New password", text: $newPassword)
+                        SecureField("Confirm new password", text: $confirmPassword)
+
+                        Button(isChangingPassword ? "Updating..." : "Update password") {
+                            Task {
+                                isChangingPassword = true
+                                let changed = await viewModel.changePassword(currentPassword: currentPassword, newPassword: newPassword)
+                                isChangingPassword = false
+                                if changed {
+                                    currentPassword = ""
+                                    newPassword = ""
+                                    confirmPassword = ""
+                                }
+                            }
+                        }
+                        .disabled(!canChangePassword)
+                    }
+                }
+            }
+            .navigationTitle("Profile")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+            .task {
+                await viewModel.loadProfile()
+                displayName = viewModel.profile?.displayName ?? ""
+            }
+            .onReceive(viewModel.$profile) { profile in
+                guard let profile else { return }
+                if displayName.isEmpty {
+                    displayName = profile.displayName
                 }
             }
         }

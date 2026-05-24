@@ -35,6 +35,8 @@ struct DashboardRealtimePayload {
     var relapseEvents: [RelapseEvent]
 }
 
+extension DashboardRealtimePayload: Codable {}
+
 // realtime contract liefert listener zurück, damit viewmodel stoppen kann
 protocol DashboardRealtimeServiceProtocol: DashboardServiceProtocol {
     func startRealtime(

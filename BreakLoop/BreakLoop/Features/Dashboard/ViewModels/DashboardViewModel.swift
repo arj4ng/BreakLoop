@@ -57,6 +57,7 @@ final class DashboardViewModel: ObservableObject {
         self.calculationService = calculationService ?? CalculationService()
         self.defaults = defaults
         self.state.selectedConsumableId = defaults.string(forKey: selectedConsumableDefaultsKey)
+        hydrateFromCacheIfAvailable()
     }
 
     deinit {
@@ -292,6 +293,26 @@ final class DashboardViewModel: ObservableObject {
 
         state.isLoading = false
         recomputeCards()
+        saveRealtimePayloadToCache(payload)
+    }
+
+    private func hydrateFromCacheIfAvailable() {
+        guard let data = defaults.data(forKey: dashboardCacheDefaultsKey) else { return }
+        do {
+            let payload = try JSONDecoder().decode(DashboardRealtimePayload.self, from: data)
+            applyRealtimePayload(payload)
+        } catch {
+            defaults.removeObject(forKey: dashboardCacheDefaultsKey)
+        }
+    }
+
+    private func saveRealtimePayloadToCache(_ payload: DashboardRealtimePayload) {
+        do {
+            let data = try JSONEncoder().encode(payload)
+            defaults.set(data, forKey: dashboardCacheDefaultsKey)
+        } catch {
+            // ignore cache write failures
+        }
     }
 
     // kpi cards aus aktuellem item + tracking daten neu berechnen
@@ -439,5 +460,10 @@ final class DashboardViewModel: ObservableObject {
     private var selectedConsumableDefaultsKey: String {
         let scopeKey = scope == .guest ? "guest" : "registered"
         return "dashboard.selectedConsumable.\(scopeKey).\(userId)"
+    }
+
+    private var dashboardCacheDefaultsKey: String {
+        let scopeKey = scope == .guest ? "guest" : "registered"
+        return "dashboard.realtimeCache.\(scopeKey).\(userId)"
     }
 }

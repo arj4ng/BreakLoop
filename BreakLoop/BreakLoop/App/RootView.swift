@@ -93,6 +93,23 @@ struct RootView: View {
                 }
             }
         }
+        .overlay(alignment: .top) {
+            if appState.route != .loading {
+                LinearGradient(
+                    colors: [
+                        Color("Background").opacity(0.96),
+                        Color("Background").opacity(0.84),
+                        Color("Background").opacity(0.56),
+                        Color("Background").opacity(0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 64)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+            }
+        }
         .task {
 
             // bootstrap läuft beim app start und setzt route once
