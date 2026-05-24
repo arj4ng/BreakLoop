@@ -39,12 +39,16 @@ Genau da setzt BreakLoop an.
   <li><code>Onboarding Flow</code> → Mehrstufig, generisch für verschiedene Konsumtypen, mit dynamischem Cost/Usage Setup</li>
   <li><code>Auth Flow</code> → Sign in, Register, Guest mit Routing über Root Flow</li>
   <li><code>Dashboard</code> → Live Übersicht mit Overview, Activity Monitor, Cost/Consumption Cards, Chart und Custom Bottom Tabs</li>
+  <li><code>Quit Mode</code> → Eigener Recovery Dashboard Zustand mit Streak, Money Saved, Units Avoided, Daily Burn Rate und Recovery Stage Vorschau</li>
+  <li><code>Consumable Picker</code> → Custom Overlay Menü mit Auswahl, Modify, Delete, Start Quit (mit Datumsauswahl) und Relapse Aktionen</li>
+  <li><code>Selection Persistence</code> → Zuletzt gewähltes Consumable wird lokal pro Account/Scope gemerkt und beim App-Start wiederhergestellt</li>
   <li><code>Entry Flows</code> → Slide-to-log für ConsumeEntries und Purchase Sheet für Preis, Menge und Einheit</li>
   <li><code>Details Tab</code> → Umschaltbare Liste für Purchases und Consumes zur Kontrolle der Rohdaten</li>
   <li><code>Settings</code> → Consumable Verwaltung mit Add/Edit/Archive und dynamischem Tracking-/Kostenmodell</li>
   <li><code>Shared Models</code> → User, Consumable, ConsumeEntry, PurchaseEntry, Rewards, Stats und flexible Cost-Metadaten</li>
   <li><code>CalculationService</code> → Kosten, Durchschnitt, Ersparnis, Reward Logik, Unit Mapping und Purchase-basierte Cost-per-Consume Berechnung</li>
-  <li><code>Firestore Repositories</code> → CRUD für Profile, Consumables, ConsumeEntries, PurchaseEntries, Rewards</li>
+  <li><code>Quit/Relapse Data Flow</code> → QuitPlans, QuitPlanEvents und RelapseEvents werden über Service + Firestore Repository persistiert</li>
+  <li><code>Firestore Repositories</code> → CRUD für Profile, Consumables, ConsumeEntries, PurchaseEntries, Rewards, QuitPlans und Event-Historie</li>
   <li><code>Firebase</code> → Auth + Firestore integriert, guestUsers/users Scope vorbereitet</li>
 </ul>
 
@@ -117,7 +121,17 @@ BreakLoop/
   <tr>
     <td>Feature Screens UI</td>
     <td>🟡 In Arbeit</td>
-    <td>Dashboard, Details und Settings sind nutzbar; Editing/Insights Polish folgt</td>
+    <td>Dashboard, Recovery/Details und Settings sind nutzbar; laufender UI/UX Polish für Konsistenz und Lesbarkeit</td>
+  </tr>
+  <tr>
+    <td>Quit Mode + Recovery</td>
+    <td>✅ Basis fertig</td>
+    <td>Start Quit mit Datum, Relapse Flow, Recovery Kennzahlen und Stage-Vorschau sind integriert und an Firestore angebunden</td>
+  </tr>
+  <tr>
+    <td>Consumable Management UX</td>
+    <td>🟡 In Arbeit</td>
+    <td>Custom Overlay Picker inkl. Actions steht; weitere Micro-UX Verbesserungen laufen</td>
   </tr>
 </table>
 
@@ -152,13 +166,18 @@ BreakLoop/
   <tr>
     <td><strong>5 · Entry Flows + Dashboard UI</strong></td>
     <td>🟡 In Arbeit</td>
-    <td>Consume/Purchase Eingabe und Dashboard Live Werte stehen; Details Editing und Insights Polish folgen</td>
+    <td>Consume/Purchase Eingabe, Recovery Modus und Dashboard Live Werte stehen; Insights/Polish folgen</td>
+  </tr>
+  <tr>
+    <td><strong>6 · Recovery Product Layer</strong></td>
+    <td>🟡 In Arbeit</td>
+    <td>Quit/Relapse UX verfeinern, Recovery Timeline ausbauen, bessere Nudges und Motivation im Alltag</td>
   </tr>
 </table>
 
 ## Aktueller Fokus
 
-- Details Tab ausbauen: Entries sichtbar machen, danach editierbar machen
-- Dashboard Kennzahlen anhand echter Purchase-/Consume-Daten weiter verständlich machen
-- Dynamisches Consumable Setup weiter vereinfachen und Beschriftungen nutzerfreundlicher machen
-- Tests/Scheme für ViewModel- und CalculationService Tests sauber lauffähig machen
+- Recovery UX weiter glätten: Quit-Modus visuell konsistent halten und Entscheidungen noch klarer machen
+- Consumable Picker weiter schärfen: schnelle Aktionen, gute Lesbarkeit in Dark/Light und weniger Reibung im Alltag
+- Details/Recovery Tab weiter ausbauen: Historie verständlicher machen und nächste sinnvolle Aktionen anbieten
+- Testabdeckung erhöhen (ViewModels + Services), damit neue Recovery/Picker Flows regressionssicher bleiben
