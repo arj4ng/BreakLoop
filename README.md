@@ -42,6 +42,10 @@ Genau da setzt BreakLoop an.
   <li><code>Quit Mode</code> → Eigener Recovery Dashboard Zustand mit Streak, Money Saved, Units Avoided, Daily Burn Rate und Recovery Stage Vorschau</li>
   <li><code>Consumable Picker</code> → Custom Overlay Menü mit Auswahl, Modify, Delete, Start Quit (mit Datumsauswahl) und Relapse Aktionen</li>
   <li><code>Selection Persistence</code> → Zuletzt gewähltes Consumable wird lokal pro Account/Scope gemerkt und beim App-Start wiederhergestellt</li>
+  <li><code>Dashboard Warm Cache</code> → Letzter Dashboard Zustand wird lokal gecacht und sofort angezeigt, während Firestore im Hintergrund live nachlädt</li>
+  <li><code>Profile Settings</code> → Dediziertes Profile Sheet mit Firestore Display-Name Update und sicherem Passwortwechsel via Re-Auth</li>
+  <li><code>Guest Profile Guard</code> → Gäste sehen im Profile Bereich einen klaren Signup CTA statt direkter Security/Profile-Edits</li>
+  <li><code>Global Status Bar Fade</code> → Oberer Lesbarkeits-Overlay für Scroll-Content unter dem Statusbereich (ohne Loading-Glitch)</li>
   <li><code>Entry Flows</code> → Slide-to-log für ConsumeEntries und Purchase Sheet für Preis, Menge und Einheit</li>
   <li><code>Details Tab</code> → Umschaltbare Liste für Purchases und Consumes zur Kontrolle der Rohdaten</li>
   <li><code>Settings</code> → Consumable Verwaltung mit Add/Edit/Archive und dynamischem Tracking-/Kostenmodell</li>
@@ -133,6 +137,16 @@ BreakLoop/
     <td>🟡 In Arbeit</td>
     <td>Custom Overlay Picker inkl. Actions steht; weitere Micro-UX Verbesserungen laufen</td>
   </tr>
+  <tr>
+    <td>Profile & Security</td>
+    <td>✅ Basis fertig</td>
+    <td>Display-Name Update über Firestore + Passwortwechsel via Firebase Re-Auth umgesetzt; Guest Signup Gate aktiv</td>
+  </tr>
+  <tr>
+    <td>Startup Performance</td>
+    <td>🟡 In Arbeit</td>
+    <td>Dashboard Warm-Cache aktiv; weitere Caching/Load-Time Optimierungen folgen</td>
+  </tr>
 </table>
 
 ## Roadmap
@@ -180,4 +194,5 @@ BreakLoop/
 - Recovery UX weiter glätten: Quit-Modus visuell konsistent halten und Entscheidungen noch klarer machen
 - Consumable Picker weiter schärfen: schnelle Aktionen, gute Lesbarkeit in Dark/Light und weniger Reibung im Alltag
 - Details/Recovery Tab weiter ausbauen: Historie verständlicher machen und nächste sinnvolle Aktionen anbieten
+- Startup-Gefühl verbessern: weitere Screens mit lokalem Warm-Cache absichern (nach Dashboard)
 - Testabdeckung erhöhen (ViewModels + Services), damit neue Recovery/Picker Flows regressionssicher bleiben
