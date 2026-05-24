@@ -18,6 +18,8 @@ import SwiftUI
 
 
 struct OnboardingDraft: Sendable {
+    var initialMode: OnboardingInitialMode
+    var quitStartDate: Date
     var displayName: String
     var preferredCurrencyCode: String
     var baselineDailyConsume: Double
@@ -37,6 +39,11 @@ struct OnboardingDraft: Sendable {
     var firstConsumablePurchaseName: String
     var firstConsumableDefaultPurchaseAmount: Double
     var addFirstConsumable: Bool
+}
+
+enum OnboardingInitialMode: String, Codable, Sendable {
+    case reduce
+    case quit
 }
 
 enum OnboardingPricingMode: String, Codable, Sendable {
@@ -66,6 +73,7 @@ struct OnboardingView: View {
 
     private enum Step: Int, CaseIterable {
         case welcome
+        case mode
         case consumable
         case dailyAmount
         case unitPrice
@@ -322,10 +330,15 @@ struct OnboardingView: View {
     }
 
     let initialProfile: UserProfile?
-    let onChooseAuth: (AuthEntryIntent, OnboardingDraft?) -> Void
+    private let onChooseAuth: (AuthEntryIntent, OnboardingDraft?) -> Void
+    private let onCompleteConsumable: ((OnboardingDraft) -> Void)?
+    private let onDismissConsumableFlow: (() -> Void)?
+    private let isConsumableOnly: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var step: Step = .welcome
+    @State private var initialMode: OnboardingInitialMode = .reduce
+    @State private var quitStartDate: Date = .now
 
     @State private var selectedType: TrackType?
     @State private var customConsumableName: String = ""
@@ -350,6 +363,27 @@ struct OnboardingView: View {
     @State private var scrollBodyHeight: CGFloat = 0
     @State private var isForwardNavigation: Bool = true
     @FocusState private var focusedField: FieldFocus?
+
+    init(initialProfile: UserProfile?, onChooseAuth: @escaping (AuthEntryIntent, OnboardingDraft?) -> Void) {
+        self.initialProfile = initialProfile
+        self.onChooseAuth = onChooseAuth
+        self.onCompleteConsumable = nil
+        self.onDismissConsumableFlow = nil
+        self.isConsumableOnly = false
+    }
+
+    init(
+        initialProfile: UserProfile?,
+        onCompleteConsumable: @escaping (OnboardingDraft) -> Void,
+        onDismissConsumableFlow: (() -> Void)? = nil
+    ) {
+        self.initialProfile = initialProfile
+        self.onChooseAuth = { _, _ in }
+        self.onCompleteConsumable = onCompleteConsumable
+        self.onDismissConsumableFlow = onDismissConsumableFlow
+        self.isConsumableOnly = true
+        _step = State(initialValue: .mode)
+    }
 
     private var hasScrolledUnderChrome: Bool {
         scrollContentOffset < -8
@@ -383,6 +417,19 @@ struct OnboardingView: View {
 
     private var totalSteps: Int {
         visibleSteps.count
+    }
+
+    private var visibleProgressIndexes: [Int] {
+        let maxDots = 5
+        guard totalSteps > maxDots else {
+            return Array(0..<totalSteps)
+        }
+
+        let halfWindow = maxDots / 2
+        let rawStart = progressIndex - halfWindow
+        let maxStart = totalSteps - maxDots
+        let start = min(max(rawStart, 0), maxStart)
+        return Array(start..<(start + maxDots))
     }
 
     private var effectiveType: TrackType {
@@ -550,11 +597,20 @@ struct OnboardingView: View {
     }
 
     private var visibleSteps: [Step] {
+        if isConsumableOnly {
+            switch pricingMode {
+            case .unit:
+                return [.mode, .consumable, .dailyAmount, .unitPrice, .summary]
+            case .package:
+                return [.mode, .consumable, .dailyAmount, .unitPrice, .quantityPerPurchase, .summary]
+            }
+        }
+
         switch pricingMode {
         case .unit:
-            return [.welcome, .consumable, .dailyAmount, .unitPrice, .summary]
+            return [.welcome, .mode, .consumable, .dailyAmount, .unitPrice, .summary]
         case .package:
-            return Step.allCases
+            return [.welcome, .mode, .consumable, .dailyAmount, .unitPrice, .quantityPerPurchase, .summary]
         }
     }
 
@@ -641,6 +697,8 @@ struct OnboardingView: View {
         switch step {
         case .welcome:
             return true
+        case .mode:
+            return true
         case .consumable:
             if selectedType == nil { return false }
             if effectiveType == .custom {
@@ -720,6 +778,8 @@ struct OnboardingView: View {
                                 switch step {
                                 case .welcome:
                                     welcomeStep
+                                case .mode:
+                                    modeStep
                                 case .consumable:
                                     consumableStep
                                 case .dailyAmount:
@@ -812,7 +872,9 @@ struct OnboardingView: View {
     }
 
     private var header: some View {
-        ZStack {
+        let isFirstVisibleStep = step == visibleSteps.first
+
+        return ZStack {
             HStack {
                 Button {
                     goBack()
@@ -833,18 +895,20 @@ struct OnboardingView: View {
                                 .stroke(Color("Border"), lineWidth: 1)
                         )
                 )
-                .opacity(step == .welcome ? 0 : 1)
-                .disabled(step == .welcome)
+                .opacity(isFirstVisibleStep ? 0 : 1)
+                .disabled(isFirstVisibleStep)
 
                 Spacer()
 
                 HStack(spacing: 6) {
-                    ForEach(0..<totalSteps, id: \.self) { index in
+                    ForEach(visibleProgressIndexes, id: \.self) { index in
                         Capsule()
                             .fill(index <= progressIndex ? Color("BrandAccentStrong") : Color("Border"))
                             .frame(width: index == progressIndex ? 20 : 8, height: 8)
+                            .opacity(index == progressIndex ? 1 : 0.72)
                     }
                 }
+                .frame(width: 76, alignment: .trailing)
             }
 
             HStack(spacing: 6) {
@@ -919,6 +983,31 @@ struct OnboardingView: View {
             .font(.footnote)
             .foregroundStyle(Color("TextSecondary"))
 
+        }
+    }
+
+    private var modeStep: some View {
+        VStack(alignment: .leading, spacing: sectionSpacing) {
+            stepTitle(
+                "How do you want to start?",
+                subtitle: "Pick tracking mode for first consumable."
+            )
+
+            VStack(spacing: 12) {
+                modeCard(
+                    mode: .reduce,
+                    title: "Reduce",
+                    subtitle: "Track consume and purchases. See cost, savings, and usage patterns.",
+                    icon: "chart.line.downtrend.xyaxis"
+                )
+
+                modeCard(
+                    mode: .quit,
+                    title: "Quit",
+                    subtitle: "Start with quit streak, avoided units, saved money, and recovery milestones.",
+                    icon: "flag.checkered"
+                )
+            }
         }
     }
 
@@ -1306,7 +1395,9 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             stepTitle(
                 "Ready to break the loop?",
-                subtitle: "Here is your starting point."
+                subtitle: initialMode == .quit
+                    ? (isConsumableOnly ? "Quit plan starts from chosen date." : "Quit plan starts after account setup.")
+                    : "Here is your starting point."
             )
 
             VStack(alignment: .leading, spacing: 10) {
@@ -1335,8 +1426,8 @@ struct OnboardingView: View {
                     .foregroundStyle(Color("BrandAccentStrong"))
 
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                    Text("Consumption-free day reward: +50 XP")
+                    Image(systemName: initialMode == .quit ? "flag.checkered" : "sparkles")
+                    Text(initialMode == .quit ? "Dashboard opens in quit mode" : "Consumption-free day reward: +50 XP")
                 }
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(Color("TextSecondary"))
@@ -1352,10 +1443,80 @@ struct OnboardingView: View {
                     )
             )
 
+            if initialMode == .quit {
+                quitDatePickerCard
+            }
+
         }
     }
 
+    private var quitDatePickerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Quit date")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(Color("TextPrimary"))
+
+                Text("Today is selected by default.")
+                    .font(.footnote)
+                    .foregroundStyle(Color("TextSecondary"))
+            }
+
+            DatePicker("", selection: $quitStartDate, in: ...Date(), displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .tint(Color("ButtonPrimaryBackground"))
+                .padding(.top, 4)
+        }
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                .fill(Color("Surface").opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                        .stroke(Color("Border").opacity(0.22), lineWidth: 1)
+                )
+        )
+    }
+
     private var bottomBar: some View {
+        if isConsumableOnly, step == .summary {
+            return AnyView(
+                VStack(spacing: 10) {
+                    Button {
+                        onCompleteConsumable?(makeDraft())
+                    } label: {
+                        Label("Add Consumable", systemImage: "checkmark.circle.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                    }
+                    .hapticTap(.medium)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color("ButtonPrimaryBackground"))
+                    .clipShape(Capsule())
+
+                    Button {
+                        onDismissConsumableFlow?()
+                    } label: {
+                        Label("Cancel", systemImage: "xmark")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(compactSignInText)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 9)
+                    }
+                    .hapticTap(.light)
+                    .buttonStyle(.borderedProminent)
+                    .tint(compactSignInFill)
+                    .overlay(
+                        Capsule()
+                            .stroke(compactSignInBorder, lineWidth: 1)
+                    )
+                }
+                .padding(.top, 10)
+                .padding(.bottom, 10)
+            )
+        }
+
         if step == .summary {
             return AnyView(
                 VStack(spacing: 10) {
@@ -1414,31 +1575,33 @@ struct OnboardingView: View {
                 .shadow(color: Color.black.opacity(0.22), radius: 12, y: 6)
                 .disabled(!isCurrentStepValid)
 
-                Button {
-                    onChooseAuth(.signIn, nil)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "person.crop.circle.badge.checkmark")
-                            .font(.subheadline.weight(.semibold))
+                if !isConsumableOnly {
+                    Button {
+                        onChooseAuth(.signIn, nil)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.crop.circle.badge.checkmark")
+                                .font(.subheadline.weight(.semibold))
 
-                        Text("Sign In")
-                            .font(isWelcomeStep ? .headline : .subheadline.weight(.semibold))
+                            Text("Sign In")
+                                .font(isWelcomeStep ? .headline : .subheadline.weight(.semibold))
+                        }
+                        .foregroundStyle(isWelcomeStep ? Color("TextOnAccent") : compactSignInText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, isWelcomeStep ? 13 : 9)
                     }
-                    .foregroundStyle(isWelcomeStep ? Color("TextOnAccent") : compactSignInText)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, isWelcomeStep ? 13 : 9)
+                    .hapticTap(isWelcomeStep ? .medium : .light)
+                    .buttonStyle(.borderedProminent)
+                    .tint(isWelcomeStep ? Color("ButtonPrimaryBackground") : compactSignInFill)
+                    .overlay(
+                        Capsule()
+                            .stroke(isWelcomeStep ? Color.clear : compactSignInBorder, lineWidth: 1)
+                    )
+                    .shadow(color: isWelcomeStep ? Color.black.opacity(0.18) : Color.clear, radius: 10, y: 4)
+                    .opacity(isWelcomeStep ? 1 : 0.92)
+                    .scaleEffect(isWelcomeStep ? 1 : 0.985)
+                    .animation(.easeInOut(duration: 0.22), value: isWelcomeStep)
                 }
-                .hapticTap(isWelcomeStep ? .medium : .light)
-                .buttonStyle(.borderedProminent)
-                .tint(isWelcomeStep ? Color("ButtonPrimaryBackground") : compactSignInFill)
-                .overlay(
-                    Capsule()
-                        .stroke(isWelcomeStep ? Color.clear : compactSignInBorder, lineWidth: 1)
-                )
-                .shadow(color: isWelcomeStep ? Color.black.opacity(0.18) : Color.clear, radius: 10, y: 4)
-                .opacity(isWelcomeStep ? 1 : 0.92)
-                .scaleEffect(isWelcomeStep ? 1 : 0.985)
-                .animation(.easeInOut(duration: 0.22), value: isWelcomeStep)
             }
             .padding(.top, 10)
             .padding(.bottom, 10)
@@ -1449,6 +1612,8 @@ struct OnboardingView: View {
         switch step {
         case .welcome:
             return "Get Started"
+        case .mode:
+            return "Continue"
         default:
             return "Next"
         }
@@ -1493,6 +1658,55 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func modeCard(mode: OnboardingInitialMode, title: String, subtitle: String, icon: String) -> some View {
+        let selected = initialMode == mode
+
+        Button {
+            initialMode = mode
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(selected ? Color("TextOnAccent") : Color("BrandAccentStrong"))
+                    .frame(width: 42, height: 42)
+                    .background(
+                        Circle()
+                            .fill(selected ? Color.white.opacity(0.18) : Color("SurfaceElevated"))
+                    )
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(selected ? Color("TextOnAccent") : Color("TextPrimary"))
+
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(selected ? Color("TextOnAccent").opacity(0.82) : Color("TextSecondary"))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(selected ? Color("TextOnAccent") : Color("TextSecondary"))
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                    .fill(selected ? Color("ButtonPrimaryBackground") : Color("Surface").opacity(0.78))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                            .stroke(selected ? Color.clear : Color("Border").opacity(0.22), lineWidth: 1)
+                    )
+            )
+        }
+        .hapticTap(.light)
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -1587,6 +1801,9 @@ struct OnboardingView: View {
 
     private func handlePrimaryAction() {
         if step == .summary {
+            if isConsumableOnly {
+                onCompleteConsumable?(makeDraft())
+            }
             return
         }
 
@@ -1665,6 +1882,8 @@ struct OnboardingView: View {
 
     private func makeDraft() -> OnboardingDraft {
         OnboardingDraft(
+            initialMode: initialMode,
+            quitStartDate: quitStartDate,
             displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
             preferredCurrencyCode: selectedCurrencyCode,
             baselineDailyConsume: max(0, dailyAmountValue),

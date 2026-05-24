@@ -56,6 +56,9 @@ struct DashboardViewState: Hashable {
     var entries: [ConsumeEntry]
     var purchases: [PurchaseEntry]
     var rewards: [RewardEntry]
+    var quitPlans: [QuitPlan]
+    var quitPlanEvents: [QuitPlanEvent]
+    var relapseEvents: [RelapseEvent]
     var cards: [DashboardKPI]
     var isLoading: Bool
     var errorMessage: String?
@@ -67,6 +70,9 @@ struct DashboardViewState: Hashable {
         entries: [],
         purchases: [],
         rewards: [],
+        quitPlans: [],
+        quitPlanEvents: [],
+        relapseEvents: [],
         cards: [],
         isLoading: true,
         errorMessage: nil
@@ -76,6 +82,17 @@ struct DashboardViewState: Hashable {
     var selectedItem: ConsumableItem? {
         guard let selectedConsumableId else { return activeConsumables.first }
         return activeConsumables.first(where: { $0.id == selectedConsumableId }) ?? activeConsumables.first
+    }
+
+    // aktueller quit/reduce plan für ausgewähltes item
+    var selectedActiveQuitPlan: QuitPlan? {
+        guard let item = selectedItem else { return nil }
+        return quitPlans
+            .filter { !$0.isArchived }
+            .filter { $0.consumableItemId == item.id }
+            .filter { $0.status == .active || $0.status == .paused }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .first
     }
 
     // empty state nur zeigen, wenn wirklich keine log daten da sind
@@ -97,4 +114,19 @@ struct DashboardEntryActionMessage: Identifiable, Hashable {
         self.allowsUndo = allowsUndo
         self.isError = isError
     }
+}
+
+// kompakte quit stats für dashboard cards
+struct DashboardQuitMetrics: Hashable {
+    let daysQuit: Int
+    let unitsAvoided: Double
+    let moneySaved: Decimal
+    let dailyBurnRate: Decimal
+
+    static let empty = DashboardQuitMetrics(
+        daysQuit: 0,
+        unitsAvoided: 0,
+        moneySaved: .zero,
+        dailyBurnRate: .zero
+    )
 }

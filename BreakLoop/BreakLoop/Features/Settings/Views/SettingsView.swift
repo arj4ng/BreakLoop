@@ -98,12 +98,16 @@ private struct ConsumablesSettingsView: View {
 
             Section {
                 ForEach(viewModel.consumables) { item in
-                    Button {
-                        formRoute = ConsumableFormRoute(item: item)
-                    } label: {
-                        consumableRow(item)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Button {
+                            formRoute = ConsumableFormRoute(item: item)
+                        } label: {
+                            consumableRow(item)
+                        }
+                        .buttonStyle(.plain)
+
+                        quitControls(for: item)
                     }
-                    .buttonStyle(.plain)
                     .swipeActions {
                         Button(role: .destructive) {
                             pendingArchiveItem = item
@@ -195,6 +199,79 @@ private struct ConsumablesSettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private func quitControls(for item: ConsumableItem) -> some View {
+        if let plan = viewModel.activeQuitPlan(for: item) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label(plan.status == .paused ? "Quit paused" : "Quit active", systemImage: "flag.checkered")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(AppColors.accent)
+
+                    Spacer()
+
+                    Text(plan.startDate, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
+
+                HStack(spacing: 8) {
+                    if plan.status == .paused {
+                        settingsActionButton("Resume", icon: "play.fill") {
+                            await viewModel.resumeQuitPlan(plan)
+                        }
+                    } else {
+                        settingsActionButton("Pause", icon: "pause.fill") {
+                            await viewModel.pauseQuitPlan(plan)
+                        }
+                    }
+
+                    settingsActionButton("End", icon: "checkmark.circle") {
+                        await viewModel.endQuitPlan(plan)
+                    }
+
+                    settingsActionButton("Relapse", icon: "arrow.uturn.backward", role: .destructive) {
+                        await viewModel.relapseQuitPlan(plan)
+                    }
+                }
+            }
+            .padding(12)
+            .background(AppColors.surface.opacity(0.72), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else {
+            Button {
+                Task {
+                    await viewModel.startQuitPlan(for: item)
+                }
+            } label: {
+                Label("Start Quit Plan", systemImage: "flag.checkered")
+                    .font(.footnote.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.bordered)
+            .tint(AppColors.accent)
+        }
+    }
+
+    private func settingsActionButton(
+        _ title: String,
+        icon: String,
+        role: ButtonRole? = nil,
+        action: @escaping @MainActor () async -> Void
+    ) -> some View {
+        Button(role: role) {
+            Task {
+                await action()
+            }
+        } label: {
+            Label(title, systemImage: icon)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .tint(role == .destructive ? .red : AppColors.accent)
+    }
+
     private func icon(for category: ConsumableCategory) -> String {
         switch category {
         case .nicotine: return "smoke.fill"
@@ -207,7 +284,7 @@ private struct ConsumablesSettingsView: View {
     }
 }
 
-private struct ConsumableFormRoute: Identifiable {
+struct ConsumableFormRoute: Identifiable {
     let id: String
     let item: ConsumableItem?
 
@@ -217,7 +294,7 @@ private struct ConsumableFormRoute: Identifiable {
     }
 }
 
-private struct ConsumableFormView: View {
+struct ConsumableFormView: View {
     let item: ConsumableItem?
     let onSave: @MainActor (ConsumableFormSubmission, ConsumableItem?) async -> Bool
 
@@ -339,7 +416,7 @@ private struct ConsumableFormView: View {
 }
 
 @MainActor
-private final class ConsumableFormState: ObservableObject {
+final class ConsumableFormState: ObservableObject {
     @Published var name: String
     @Published var category: ConsumableCategory
     @Published var consumePresetId: String

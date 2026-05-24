@@ -35,13 +35,19 @@ struct FirestoreUserDataSnapshot: Sendable {
     var consumeEntries: [ConsumeEntry]
     var purchaseEntries: [PurchaseEntry]
     var rewardEntries: [RewardEntry]
+    var quitPlans: [QuitPlan]
+    var quitPlanEvents: [QuitPlanEvent]
+    var relapseEvents: [RelapseEvent]
 
     var hasAnyData: Bool {
         profile != nil ||
         !consumableItems.isEmpty ||
         !consumeEntries.isEmpty ||
         !purchaseEntries.isEmpty ||
-        !rewardEntries.isEmpty
+        !rewardEntries.isEmpty ||
+        !quitPlans.isEmpty ||
+        !quitPlanEvents.isEmpty ||
+        !relapseEvents.isEmpty
     }
 }
 
@@ -101,6 +107,31 @@ protocol RewardEntryRepositoryProtocol {
 
     // schreibt reward event in historie
     func saveRewardEntry(_ entry: RewardEntry) async throws
+}
+
+protocol QuitPlanRepositoryProtocol {
+
+    // lädt quit plans aus subcollection
+    func fetchQuitPlans(userId: String, scope: FirestoreAccountScope) async throws -> [QuitPlan]
+
+    // speichert quit plan im passenden scope
+    func saveQuitPlan(_ plan: QuitPlan, scope: FirestoreAccountScope) async throws
+
+    // schreibt quit event history
+    func saveQuitPlanEvent(_ event: QuitPlanEvent, scope: FirestoreAccountScope) async throws
+
+    // schreibt relapse event und optional consume log nach erfolgreichem statuswechsel
+    func recordRelapse(
+        plan: QuitPlan,
+        amount: Double?,
+        unit: ConsumeUnit?,
+        reason: String?,
+        createsConsumeEntry: Bool,
+        scope: FirestoreAccountScope
+    ) async throws -> QuitPlanRelapseResult
+
+    // soft archive statt löschen
+    func archiveQuitPlan(userId: String, planId: String, archivedAt: Date, scope: FirestoreAccountScope) async throws
 }
 
 

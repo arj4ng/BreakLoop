@@ -33,7 +33,9 @@ final class DashboardViewModel: ObservableObject {
     let scope: FirestoreAccountScope
     private let realtimeService: DashboardRealtimeServiceProtocol
     private let entryRepository: DashboardEntryRepositoryProtocol
+    private let quitPlanService: QuitPlanService
     private let calculationService: CalculationService
+    private let defaults: UserDefaults
     // firestore listener behalten, damit deinit sie stoppen kann
     private var listeners: [ListenerRegistration] = []
     private var lastQuickConsumeEntryId: String?
@@ -43,13 +45,18 @@ final class DashboardViewModel: ObservableObject {
         scope: FirestoreAccountScope,
         realtimeService: DashboardRealtimeServiceProtocol? = nil,
         entryRepository: DashboardEntryRepositoryProtocol? = nil,
-        calculationService: CalculationService? = nil
+        quitPlanService: QuitPlanService? = nil,
+        calculationService: CalculationService? = nil,
+        defaults: UserDefaults = .standard
     ) {
         self.userId = userId
         self.scope = scope
         self.realtimeService = realtimeService ?? FirestoreDashboardRealtimeService()
         self.entryRepository = entryRepository ?? FirestoreTrackingRepository()
+        self.quitPlanService = quitPlanService ?? QuitPlanService()
         self.calculationService = calculationService ?? CalculationService()
+        self.defaults = defaults
+        self.state.selectedConsumableId = defaults.string(forKey: selectedConsumableDefaultsKey)
     }
 
     deinit {
@@ -62,7 +69,40 @@ final class DashboardViewModel: ObservableObject {
     }
 
     var shouldShowConsumablePicker: Bool {
-        state.activeConsumables.count > 1
+        !state.activeConsumables.isEmpty
+    }
+
+    var selectedActiveQuitPlan: QuitPlan? {
+        state.selectedActiveQuitPlan
+    }
+
+    var isSelectedConsumableInQuitMode: Bool {
+        selectedActiveQuitPlan != nil
+    }
+
+    var selectedQuitMetrics: DashboardQuitMetrics {
+        guard let plan = selectedActiveQuitPlan else { return .empty }
+
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: plan.startDate)
+        let end = calendar.startOfDay(for: .now)
+        let days = max(0, calendar.dateComponents([.day], from: start, to: end).day ?? 0)
+        let baselineDaily = max(0, plan.baselineDailyConsume ?? state.profile?.baselineDailyConsume ?? 0)
+        let baselineCost = plan.baselineCostPerConsume ?? state.profile?.baselineCostPerConsume ?? .zero
+        let unitsAvoided = Double(days) * baselineDaily
+        let dailyBurnRate = Decimal(baselineDaily) * baselineCost
+
+        return DashboardQuitMetrics(
+            daysQuit: days,
+            unitsAvoided: unitsAvoided,
+            moneySaved: Decimal(unitsAvoided) * baselineCost,
+            dailyBurnRate: dailyBurnRate
+        )
+    }
+
+    var selectedRecoveryTemplate: RecoveryTemplate? {
+        guard let plan = selectedActiveQuitPlan else { return nil }
+        return RecoveryTemplateRegistry.template(id: plan.templateId, fallback: plan.category)
     }
 
     // startet realtime nur einmal pro view model
@@ -89,6 +129,7 @@ final class DashboardViewModel: ObservableObject {
 
     func selectConsumable(id: String) {
         state.selectedConsumableId = id
+        defaults.set(id, forKey: selectedConsumableDefaultsKey)
         recomputeCards()
     }
 
@@ -169,20 +210,84 @@ final class DashboardViewModel: ObservableObject {
         entryActionMessage = nil
     }
 
+    func pauseSelectedQuitPlan() async {
+        guard let plan = selectedActiveQuitPlan else { return }
+        do {
+            _ = try await quitPlanService.transition(plan: plan, to: .paused, note: "Plan paused", scope: scope)
+            entryActionMessage = DashboardEntryActionMessage(text: "Plan paused")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    func resumeSelectedQuitPlan() async {
+        guard let plan = selectedActiveQuitPlan else { return }
+        do {
+            _ = try await quitPlanService.transition(plan: plan, to: .active, note: "Plan resumed", scope: scope)
+            entryActionMessage = DashboardEntryActionMessage(text: "Plan resumed")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    func endSelectedQuitPlan() async {
+        guard let plan = selectedActiveQuitPlan else { return }
+        do {
+            _ = try await quitPlanService.transition(plan: plan, to: .completed, note: "Plan ended", scope: scope)
+            entryActionMessage = DashboardEntryActionMessage(text: "Plan ended")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    func relapseSelectedPlan() async {
+        guard let plan = selectedActiveQuitPlan else { return }
+
+        do {
+            _ = try await quitPlanService.relapse(
+                plan: plan,
+                amount: selectedItem?.effectiveTrackAmount,
+                unit: selectedItem?.effectiveTrackUnit,
+                reason: nil,
+                createsConsumeEntry: true,
+                scope: scope
+            )
+            entryActionMessage = DashboardEntryActionMessage(text: "Relapse logged")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
     // snapshot daten übernehmen und aktive items für ui sortieren
     private func applyRealtimePayload(_ payload: DashboardRealtimePayload) {
         state.profile = payload.profile
         state.entries = payload.entries
         state.purchases = payload.purchases
         state.rewards = payload.rewards
+        state.quitPlans = payload.quitPlans
+        state.quitPlanEvents = payload.quitPlanEvents
+        state.relapseEvents = payload.relapseEvents
         state.activeConsumables = payload.consumables.sorted { $0.updatedAt > $1.updatedAt }
 
         let activeIds = Set(state.activeConsumables.map(\.id))
-        if let selected = state.selectedConsumableId, activeIds.contains(selected) == false {
+        let storedSelectedId = defaults.string(forKey: selectedConsumableDefaultsKey)
+
+        if let selected = state.selectedConsumableId,
+           !activeIds.isEmpty,
+           activeIds.contains(selected) == false {
             state.selectedConsumableId = nil
         }
-        if state.selectedConsumableId == nil {
-            state.selectedConsumableId = state.activeConsumables.first?.id
+
+        if state.selectedConsumableId == nil,
+           let storedSelectedId,
+           activeIds.contains(storedSelectedId) {
+            state.selectedConsumableId = storedSelectedId
+        }
+
+        if state.selectedConsumableId == nil,
+           let firstId = state.activeConsumables.first?.id {
+            state.selectedConsumableId = firstId
+            defaults.set(firstId, forKey: selectedConsumableDefaultsKey)
         }
 
         state.isLoading = false
@@ -329,5 +434,10 @@ final class DashboardViewModel: ObservableObject {
             return String(Int(value))
         }
         return String(format: "%.1f", value)
+    }
+
+    private var selectedConsumableDefaultsKey: String {
+        let scopeKey = scope == .guest ? "guest" : "registered"
+        return "dashboard.selectedConsumable.\(scopeKey).\(userId)"
     }
 }

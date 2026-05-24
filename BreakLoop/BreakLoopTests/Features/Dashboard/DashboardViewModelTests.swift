@@ -81,6 +81,27 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertEqual(repository.deletedConsumes.first?.scope, .guest)
     }
 
+    func testSelectedActiveQuitPlanMatchesSelectedConsumable() async {
+        let realtime = DashboardRealtimeServiceFake()
+        let repository = DashboardEntryRepositoryFake()
+        let viewModel = makeViewModel(realtime: realtime, repository: repository)
+        let coffee = makeItem(id: "coffee")
+        let vape = makeItem(id: "vape")
+        let plan = QuitPlan(
+            id: "plan-vape",
+            userId: "user-1",
+            consumableItemId: "vape",
+            status: .active,
+            category: .nicotine
+        )
+
+        viewModel.start()
+        await realtime.send(consumables: [coffee, vape], quitPlans: [plan])
+        viewModel.selectConsumable(id: "vape")
+
+        XCTAssertEqual(viewModel.state.selectedActiveQuitPlan?.id, "plan-vape")
+    }
+
     private func makeViewModel(
         scope: FirestoreAccountScope = .registered,
         realtime: DashboardRealtimeServiceFake,
@@ -128,7 +149,7 @@ private final class DashboardRealtimeServiceFake: DashboardRealtimeServiceProtoc
     }
 
     @MainActor
-    func send(consumables: [ConsumableItem]) async {
+    func send(consumables: [ConsumableItem], quitPlans: [QuitPlan] = []) async {
         onUpdate?(
             DashboardRealtimePayload(
                 profile: UserProfile(
@@ -143,7 +164,10 @@ private final class DashboardRealtimeServiceFake: DashboardRealtimeServiceProtoc
                 consumables: consumables,
                 entries: [],
                 purchases: [],
-                rewards: []
+                rewards: [],
+                quitPlans: quitPlans,
+                quitPlanEvents: [],
+                relapseEvents: []
             )
         )
         await Task.yield()

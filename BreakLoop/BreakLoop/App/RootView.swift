@@ -297,6 +297,23 @@ struct RootView: View {
             )
 
             try await userProfileRepository.saveConsumableItem(item, scope: scope)
+
+            if draft.initialMode == .quit {
+                let plan = QuitPlan(
+                    id: UUID().uuidString,
+                    userId: session.userId,
+                    consumableItemId: item.id,
+                    status: .active,
+                    mode: .quit,
+                    startDate: draft.quitStartDate,
+                    baselineDailyConsume: draft.baselineDailyConsume,
+                    baselineCostPerConsume: draft.baselineCostPerConsume,
+                    templateId: RecoveryTemplateRegistry.defaultTemplateID(for: item.category),
+                    category: item.category
+                )
+
+                try await userProfileRepository.saveQuitPlan(plan, scope: scope)
+            }
         }
 
         pendingOnboardingDraft = nil

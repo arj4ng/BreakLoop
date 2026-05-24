@@ -23,7 +23,7 @@ import Foundation
 protocol SettingsServiceProtocol {}
 
 // settings braucht scoped crud, weil guest und user daten getrennt liegen
-protocol SettingsConsumableServiceProtocol: SettingsServiceProtocol {
+protocol SettingsConsumableServiceProtocol: SettingsServiceProtocol, QuitPlanRepositoryProtocol {
     func fetchConsumableItems(userId: String, scope: FirestoreAccountScope) async throws -> [ConsumableItem]
     func saveConsumableItem(_ item: ConsumableItem, scope: FirestoreAccountScope) async throws
     func archiveConsumableItem(userId: String, itemId: String, scope: FirestoreAccountScope) async throws

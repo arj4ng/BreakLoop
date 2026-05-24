@@ -30,6 +30,9 @@ struct DashboardRealtimePayload {
     var entries: [ConsumeEntry]
     var purchases: [PurchaseEntry]
     var rewards: [RewardEntry]
+    var quitPlans: [QuitPlan]
+    var quitPlanEvents: [QuitPlanEvent]
+    var relapseEvents: [RelapseEvent]
 }
 
 // realtime contract liefert listener zurück, damit viewmodel stoppen kann
@@ -73,6 +76,9 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
         var entries: [ConsumeEntry] = []
         var purchases: [PurchaseEntry] = []
         var rewards: [RewardEntry] = []
+        var quitPlans: [QuitPlan] = []
+        var quitPlanEvents: [QuitPlanEvent] = []
+        var relapseEvents: [RelapseEvent] = []
 
         // jeder listener aktualisiert seinen teil und pusht dann kompletten stand
         func push() {
@@ -82,7 +88,10 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
                     consumables: consumables,
                     entries: entries,
                     purchases: purchases,
-                    rewards: rewards
+                    rewards: rewards,
+                    quitPlans: quitPlans,
+                    quitPlanEvents: quitPlanEvents,
+                    relapseEvents: relapseEvents
                 )
             )
         }
@@ -149,7 +158,55 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
             push()
         }
 
-        return [profileListener, consumableListener, consumeListener, purchaseListener, rewardListener]
+        // aktive und historische quit plans für spätere per-item quit ui
+        let quitPlanListener = base.collection(FirestorePath.quitPlans).addSnapshotListener { snapshot, error in
+            if let error {
+                onError(error)
+                return
+            }
+
+            quitPlans = snapshot?.documents.compactMap {
+                self.quitPlan(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+            }.filter { !$0.isArchived } ?? []
+            push()
+        }
+
+        // quit event history ohne archivierte events
+        let quitEventListener = base.collection(FirestorePath.quitPlanEvents).addSnapshotListener { snapshot, error in
+            if let error {
+                onError(error)
+                return
+            }
+
+            quitPlanEvents = snapshot?.documents.compactMap {
+                self.quitPlanEvent(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+            }.filter { !$0.isArchived } ?? []
+            push()
+        }
+
+        // relapse history ohne archivierte events
+        let relapseListener = base.collection(FirestorePath.relapseEvents).addSnapshotListener { snapshot, error in
+            if let error {
+                onError(error)
+                return
+            }
+
+            relapseEvents = snapshot?.documents.compactMap {
+                self.relapseEvent(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+            }.filter { !$0.isArchived } ?? []
+            push()
+        }
+
+        return [
+            profileListener,
+            consumableListener,
+            consumeListener,
+            purchaseListener,
+            rewardListener,
+            quitPlanListener,
+            quitEventListener,
+            relapseListener
+        ]
     }
 
     // guest daten und account daten liegen in getrennten root collections
@@ -302,6 +359,88 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
             periodKey: data["periodKey"] as? String,
             reason: data["reason"] as? String,
             createdAt: timestampToDate(data["createdAt"]) ?? .now
+        )
+    }
+
+    // firestore dictionary -> quit plan model
+    private func quitPlan(from data: [String: Any], fallbackId: String, userId: String) -> QuitPlan? {
+        guard
+            let consumableItemId = data["consumableItemId"] as? String,
+            let categoryRaw = data["category"] as? String,
+            let category = ConsumableCategory(rawValue: categoryRaw)
+        else {
+            return nil
+        }
+
+        let status = (data["status"] as? String).flatMap(QuitPlanStatus.init(rawValue:)) ?? .active
+        let mode = (data["mode"] as? String).flatMap(QuitPlanMode.init(rawValue:)) ?? .quit
+
+        return QuitPlan(
+            id: (data["id"] as? String) ?? fallbackId,
+            userId: (data["userId"] as? String) ?? userId,
+            consumableItemId: consumableItemId,
+            status: status,
+            mode: mode,
+            startDate: timestampToDate(data["startDate"]) ?? .now,
+            targetDate: timestampToDate(data["targetDate"]),
+            baselineDailyConsume: data["baselineDailyConsume"] as? Double,
+            baselineCostPerConsume: numberToDecimal(data["baselineCostPerConsume"]),
+            templateId: data["templateId"] as? String,
+            category: category,
+            createdAt: timestampToDate(data["createdAt"]) ?? .now,
+            updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
+            isArchived: (data["isArchived"] as? Bool) ?? (status == .archived)
+        )
+    }
+
+    // firestore dictionary -> quit event model
+    private func quitPlanEvent(from data: [String: Any], fallbackId: String, userId: String) -> QuitPlanEvent? {
+        guard
+            let consumableItemId = data["consumableItemId"] as? String,
+            let quitPlanId = data["quitPlanId"] as? String,
+            let typeRaw = data["type"] as? String,
+            let type = QuitPlanEventType(rawValue: typeRaw)
+        else {
+            return nil
+        }
+
+        return QuitPlanEvent(
+            id: (data["id"] as? String) ?? fallbackId,
+            userId: (data["userId"] as? String) ?? userId,
+            consumableItemId: consumableItemId,
+            quitPlanId: quitPlanId,
+            type: type,
+            timestamp: timestampToDate(data["timestamp"]) ?? .now,
+            value: data["value"] as? Double,
+            note: data["note"] as? String,
+            createdAt: timestampToDate(data["createdAt"]) ?? .now,
+            updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
+            isArchived: data["isArchived"] as? Bool ?? false
+        )
+    }
+
+    // firestore dictionary -> relapse event model
+    private func relapseEvent(from data: [String: Any], fallbackId: String, userId: String) -> RelapseEvent? {
+        guard
+            let consumableItemId = data["consumableItemId"] as? String,
+            let quitPlanId = data["quitPlanId"] as? String
+        else {
+            return nil
+        }
+
+        return RelapseEvent(
+            id: (data["id"] as? String) ?? fallbackId,
+            userId: (data["userId"] as? String) ?? userId,
+            consumableItemId: consumableItemId,
+            quitPlanId: quitPlanId,
+            timestamp: timestampToDate(data["timestamp"]) ?? .now,
+            amount: data["amount"] as? Double,
+            unit: (data["unit"] as? String).flatMap(ConsumeUnit.init(rawValue:)),
+            reason: data["reason"] as? String,
+            createdConsumeEntryId: data["createdConsumeEntryId"] as? String,
+            createdAt: timestampToDate(data["createdAt"]) ?? .now,
+            updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
+            isArchived: data["isArchived"] as? Bool ?? false
         )
     }
 

@@ -25,6 +25,7 @@ import Combine
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published private(set) var consumables: [ConsumableItem] = []
+    @Published private(set) var quitPlans: [QuitPlan] = []
     @Published private(set) var isLoading = false
     @Published private(set) var message: String?
 
@@ -47,10 +48,21 @@ final class SettingsViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            consumables = try await service.fetchConsumableItems(userId: userId, scope: scope)
+            async let loadedConsumables = service.fetchConsumableItems(userId: userId, scope: scope)
+            async let loadedPlans = service.fetchQuitPlans(userId: userId, scope: scope)
+            consumables = try await loadedConsumables
+            quitPlans = try await loadedPlans
         } catch {
             message = error.localizedDescription
         }
+    }
+
+    func activeQuitPlan(for item: ConsumableItem) -> QuitPlan? {
+        quitPlans
+            .filter { !$0.isArchived && $0.consumableItemId == item.id }
+            .filter { $0.status == .active || $0.status == .paused }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .first
     }
 
     // async: Firestore save wartet ohne ui thread zu blockieren
@@ -133,6 +145,74 @@ final class SettingsViewModel: ObservableObject {
         do {
             try await service.archiveConsumableItem(userId: userId, itemId: item.id, scope: scope)
             message = "Consumable removed"
+            await loadConsumables()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    func startQuitPlan(for item: ConsumableItem) async {
+        await startQuitPlan(for: item, startDate: .now)
+    }
+
+    func startQuitPlan(for item: ConsumableItem, startDate: Date) async {
+        let plan = QuitPlan(
+            id: UUID().uuidString,
+            userId: userId,
+            consumableItemId: item.id,
+            status: .active,
+            mode: .quit,
+            startDate: startDate,
+            baselineDailyConsume: nil,
+            baselineCostPerConsume: item.defaultCostPerConsume,
+            templateId: RecoveryTemplateRegistry.defaultTemplateID(for: item.category),
+            category: item.category
+        )
+
+        do {
+            try await service.saveQuitPlan(plan, scope: scope)
+            message = "Quit plan started"
+            await loadConsumables()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    func pauseQuitPlan(_ plan: QuitPlan) async {
+        await updateQuitPlan(plan, status: .paused, note: "Plan paused", messageText: "Plan paused")
+    }
+
+    func resumeQuitPlan(_ plan: QuitPlan) async {
+        await updateQuitPlan(plan, status: .active, note: "Plan resumed", messageText: "Plan resumed")
+    }
+
+    func endQuitPlan(_ plan: QuitPlan) async {
+        await updateQuitPlan(plan, status: .completed, note: "Plan ended", messageText: "Plan ended")
+    }
+
+    func relapseQuitPlan(_ plan: QuitPlan) async {
+        do {
+            let service = QuitPlanService(repository: self.service)
+            _ = try await service.relapse(
+                plan: plan,
+                amount: nil,
+                unit: nil,
+                reason: nil,
+                createsConsumeEntry: false,
+                scope: scope
+            )
+            message = "Relapse logged"
+            await loadConsumables()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func updateQuitPlan(_ plan: QuitPlan, status: QuitPlanStatus, note: String, messageText: String) async {
+        do {
+            let service = QuitPlanService(repository: self.service)
+            _ = try await service.transition(plan: plan, to: status, note: note, scope: scope)
+            message = messageText
             await loadConsumables()
         } catch {
             message = error.localizedDescription

@@ -27,6 +27,7 @@ final class FirestoreTrackingRepository:
     ConsumeEntryRepositoryProtocol,
     PurchaseEntryRepositoryProtocol,
     RewardEntryRepositoryProtocol,
+    QuitPlanRepositoryProtocol,
     UserDataMigrationRepositoryProtocol
 {
 
@@ -196,6 +197,118 @@ final class FirestoreTrackingRepository:
             .setData(rewardEntryData(entry), merge: true)
     }
 
+
+    // MARK: - quit plans
+
+    func fetchQuitPlans(userId: String, scope: FirestoreAccountScope) async throws -> [QuitPlan] {
+        let snapshot = try await quitPlansCollection(userId: userId, scope: scope)
+            .whereField("isArchived", isEqualTo: false)
+            .order(by: "updatedAt", descending: true)
+            .getDocuments()
+
+        return snapshot.documents.compactMap {
+            quitPlan(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+    }
+
+    func saveQuitPlan(_ plan: QuitPlan, scope: FirestoreAccountScope) async throws {
+        try await quitPlansCollection(userId: plan.userId, scope: scope)
+            .document(plan.id)
+            .setData(quitPlanData(plan), merge: true)
+    }
+
+    func saveQuitPlanEvent(_ event: QuitPlanEvent, scope: FirestoreAccountScope) async throws {
+        try await quitPlanEventsCollection(userId: event.userId, scope: scope)
+            .document(event.id)
+            .setData(quitPlanEventData(event), merge: true)
+    }
+
+    func recordRelapse(
+        plan: QuitPlan,
+        amount: Double?,
+        unit: ConsumeUnit?,
+        reason: String?,
+        createsConsumeEntry: Bool,
+        scope: FirestoreAccountScope
+    ) async throws -> QuitPlanRelapseResult {
+        guard plan.status == .relapsed else {
+            throw NSError(
+                domain: "BreakLoop.QuitPlan",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Relapse requires relapsed plan"]
+            )
+        }
+
+        let now = Date()
+        try await saveQuitPlan(plan, scope: scope)
+
+        let consumeEntry: ConsumeEntry?
+        if createsConsumeEntry,
+           let amount,
+           amount > 0,
+           let unit {
+            let entry = ConsumeEntry(
+                id: UUID().uuidString,
+                userId: plan.userId,
+                consumableItemId: plan.consumableItemId,
+                timestamp: now,
+                amount: amount,
+                unit: unit
+            )
+            try await saveConsumeEntry(entry, scope: scope)
+            consumeEntry = entry
+        } else {
+            consumeEntry = nil
+        }
+
+        let relapse = RelapseEvent(
+            id: UUID().uuidString,
+            userId: plan.userId,
+            consumableItemId: plan.consumableItemId,
+            quitPlanId: plan.id,
+            timestamp: now,
+            amount: amount,
+            unit: unit,
+            reason: reason,
+            createdConsumeEntryId: consumeEntry?.id,
+            createdAt: now,
+            updatedAt: now
+        )
+        try await relapseEventsCollection(userId: plan.userId, scope: scope)
+            .document(relapse.id)
+            .setData(relapseEventData(relapse), merge: true)
+
+        let event = QuitPlanEvent(
+            id: UUID().uuidString,
+            userId: plan.userId,
+            consumableItemId: plan.consumableItemId,
+            quitPlanId: plan.id,
+            type: .note,
+            timestamp: now,
+            note: "Relapse logged",
+            createdAt: now,
+            updatedAt: now
+        )
+        try await saveQuitPlanEvent(event, scope: scope)
+
+        return QuitPlanRelapseResult(
+            plan: plan,
+            event: event,
+            relapse: relapse,
+            consumeEntry: consumeEntry
+        )
+    }
+
+    func archiveQuitPlan(userId: String, planId: String, archivedAt: Date, scope: FirestoreAccountScope) async throws {
+        try await quitPlansCollection(userId: userId, scope: scope)
+            .document(planId)
+            .updateData([
+                "status": QuitPlanStatus.archived.rawValue,
+                "isArchived": true,
+                "updatedAt": Timestamp(date: archivedAt)
+            ])
+    }
+
     func fetchUserProfile(userId: String, scope: FirestoreAccountScope) async throws -> UserProfile? {
         let snapshot = try await usersCollection(scope: scope).document(userId).getDocument()
         guard let data = snapshot.data() else { return nil }
@@ -224,6 +337,9 @@ final class FirestoreTrackingRepository:
         async let consumeDocs = consumeEntriesCollection(userId: userId, scope: scope).getDocuments()
         async let purchaseDocs = purchaseEntriesCollection(userId: userId, scope: scope).getDocuments()
         async let rewardDocs = rewardEntriesCollection(userId: userId, scope: scope).getDocuments()
+        async let quitPlanDocs = quitPlansCollection(userId: userId, scope: scope).getDocuments()
+        async let quitEventDocs = quitPlanEventsCollection(userId: userId, scope: scope).getDocuments()
+        async let relapseDocs = relapseEventsCollection(userId: userId, scope: scope).getDocuments()
 
         let itemModels = try await itemsDocs.documents.compactMap {
             consumableItem(from: $0.data(), fallbackId: $0.documentID, userId: userId)
@@ -237,13 +353,25 @@ final class FirestoreTrackingRepository:
         let rewardModels = try await rewardDocs.documents.compactMap {
             rewardEntry(from: $0.data(), fallbackId: $0.documentID, userId: userId)
         }
+        let quitPlanModels = try await quitPlanDocs.documents.compactMap {
+            quitPlan(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+        let quitEventModels = try await quitEventDocs.documents.compactMap {
+            quitPlanEvent(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
+        let relapseModels = try await relapseDocs.documents.compactMap {
+            relapseEvent(from: $0.data(), fallbackId: $0.documentID, userId: userId)
+        }
 
         return FirestoreUserDataSnapshot(
             profile: try await profile,
             consumableItems: itemModels,
             consumeEntries: consumeModels,
             purchaseEntries: purchaseModels,
-            rewardEntries: rewardModels
+            rewardEntries: rewardModels,
+            quitPlans: quitPlanModels,
+            quitPlanEvents: quitEventModels,
+            relapseEvents: relapseModels
         )
     }
 
@@ -365,6 +493,67 @@ final class FirestoreTrackingRepository:
                 .document(migrated.id)
                 .setData(rewardEntryData(migrated), merge: true)
         }
+
+        for plan in snapshot.quitPlans {
+            let migrated = QuitPlan(
+                id: plan.id,
+                userId: targetUserId,
+                consumableItemId: plan.consumableItemId,
+                status: plan.status,
+                mode: plan.mode,
+                startDate: plan.startDate,
+                targetDate: plan.targetDate,
+                baselineDailyConsume: plan.baselineDailyConsume,
+                baselineCostPerConsume: plan.baselineCostPerConsume,
+                templateId: plan.templateId,
+                category: plan.category,
+                createdAt: plan.createdAt,
+                updatedAt: .now,
+                isArchived: plan.isArchived
+            )
+            try await quitPlansCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(quitPlanData(migrated), merge: true)
+        }
+
+        for event in snapshot.quitPlanEvents {
+            let migrated = QuitPlanEvent(
+                id: event.id,
+                userId: targetUserId,
+                consumableItemId: event.consumableItemId,
+                quitPlanId: event.quitPlanId,
+                type: event.type,
+                timestamp: event.timestamp,
+                value: event.value,
+                note: event.note,
+                createdAt: event.createdAt,
+                updatedAt: .now,
+                isArchived: event.isArchived
+            )
+            try await quitPlanEventsCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(quitPlanEventData(migrated), merge: true)
+        }
+
+        for relapse in snapshot.relapseEvents {
+            let migrated = RelapseEvent(
+                id: relapse.id,
+                userId: targetUserId,
+                consumableItemId: relapse.consumableItemId,
+                quitPlanId: relapse.quitPlanId,
+                timestamp: relapse.timestamp,
+                amount: relapse.amount,
+                unit: relapse.unit,
+                reason: relapse.reason,
+                createdConsumeEntryId: relapse.createdConsumeEntryId,
+                createdAt: relapse.createdAt,
+                updatedAt: .now,
+                isArchived: relapse.isArchived
+            )
+            try await relapseEventsCollection(userId: targetUserId, scope: targetScope)
+                .document(migrated.id)
+                .setData(relapseEventData(migrated), merge: true)
+        }
     }
 
 
@@ -403,6 +592,24 @@ final class FirestoreTrackingRepository:
 
         // subcollection pfad users/{uid}/rewardEntries
         usersCollection(scope: scope).document(userId).collection(FirestorePath.rewardEntries)
+    }
+
+    private func quitPlansCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
+
+        // subcollection pfad users/{uid}/quitPlans
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.quitPlans)
+    }
+
+    private func quitPlanEventsCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
+
+        // subcollection pfad users/{uid}/quitPlanEvents
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.quitPlanEvents)
+    }
+
+    private func relapseEventsCollection(userId: String, scope: FirestoreAccountScope = .registered) -> CollectionReference {
+
+        // subcollection pfad users/{uid}/relapseEvents
+        usersCollection(scope: scope).document(userId).collection(FirestorePath.relapseEvents)
     }
 
 
@@ -509,6 +716,64 @@ final class FirestoreTrackingRepository:
             "periodKey": value.periodKey as Any,
             "reason": value.reason as Any,
             "createdAt": Timestamp(date: value.createdAt)
+        ]
+    }
+
+    private func quitPlanData(_ value: QuitPlan) -> [String: Any] {
+
+        // quit plan als raw firestore dictionary ohne swiftdata abhängigkeit
+        [
+            "id": value.id,
+            "userId": value.userId,
+            "consumableItemId": value.consumableItemId,
+            "status": value.status.rawValue,
+            "mode": value.mode.rawValue,
+            "startDate": Timestamp(date: value.startDate),
+            "targetDate": value.targetDate.map { Timestamp(date: $0) } as Any,
+            "baselineDailyConsume": value.baselineDailyConsume as Any,
+            "baselineCostPerConsume": decimalToNumber(value.baselineCostPerConsume) as Any,
+            "templateId": value.templateId as Any,
+            "category": value.category.rawValue,
+            "createdAt": Timestamp(date: value.createdAt),
+            "updatedAt": Timestamp(date: value.updatedAt),
+            "isArchived": value.isArchived
+        ]
+    }
+
+    private func quitPlanEventData(_ value: QuitPlanEvent) -> [String: Any] {
+
+        // event history bleibt soft archivierbar
+        [
+            "id": value.id,
+            "userId": value.userId,
+            "consumableItemId": value.consumableItemId,
+            "quitPlanId": value.quitPlanId,
+            "type": value.type.rawValue,
+            "timestamp": Timestamp(date: value.timestamp),
+            "value": value.value as Any,
+            "note": value.note as Any,
+            "createdAt": Timestamp(date: value.createdAt),
+            "updatedAt": Timestamp(date: value.updatedAt),
+            "isArchived": value.isArchived
+        ]
+    }
+
+    private func relapseEventData(_ value: RelapseEvent) -> [String: Any] {
+
+        // optional consume id verbindet relapse mit normalem tracking log
+        [
+            "id": value.id,
+            "userId": value.userId,
+            "consumableItemId": value.consumableItemId,
+            "quitPlanId": value.quitPlanId,
+            "timestamp": Timestamp(date: value.timestamp),
+            "amount": value.amount as Any,
+            "unit": value.unit?.rawValue as Any,
+            "reason": value.reason as Any,
+            "createdConsumeEntryId": value.createdConsumeEntryId as Any,
+            "createdAt": Timestamp(date: value.createdAt),
+            "updatedAt": Timestamp(date: value.updatedAt),
+            "isArchived": value.isArchived
         ]
     }
 
@@ -689,6 +954,85 @@ final class FirestoreTrackingRepository:
         )
     }
 
+    private func quitPlan(from data: [String: Any], fallbackId: String, userId: String) -> QuitPlan? {
+        guard
+            let consumableItemId = data["consumableItemId"] as? String,
+            let categoryRaw = data["category"] as? String,
+            let category = ConsumableCategory(rawValue: categoryRaw)
+        else {
+            return nil
+        }
+
+        let status = (data["status"] as? String).flatMap(QuitPlanStatus.init(rawValue:)) ?? .active
+        let mode = (data["mode"] as? String).flatMap(QuitPlanMode.init(rawValue:)) ?? .quit
+
+        return QuitPlan(
+            id: (data["id"] as? String) ?? fallbackId,
+            userId: (data["userId"] as? String) ?? userId,
+            consumableItemId: consumableItemId,
+            status: status,
+            mode: mode,
+            startDate: timestampToDate(data["startDate"]) ?? .now,
+            targetDate: timestampToDate(data["targetDate"]),
+            baselineDailyConsume: data["baselineDailyConsume"] as? Double,
+            baselineCostPerConsume: numberToDecimal(data["baselineCostPerConsume"]),
+            templateId: data["templateId"] as? String,
+            category: category,
+            createdAt: timestampToDate(data["createdAt"]) ?? .now,
+            updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
+            isArchived: (data["isArchived"] as? Bool) ?? (status == .archived)
+        )
+    }
+
+    private func quitPlanEvent(from data: [String: Any], fallbackId: String, userId: String) -> QuitPlanEvent? {
+        guard
+            let consumableItemId = data["consumableItemId"] as? String,
+            let quitPlanId = data["quitPlanId"] as? String,
+            let typeRaw = data["type"] as? String,
+            let type = QuitPlanEventType(rawValue: typeRaw)
+        else {
+            return nil
+        }
+
+        return QuitPlanEvent(
+            id: (data["id"] as? String) ?? fallbackId,
+            userId: (data["userId"] as? String) ?? userId,
+            consumableItemId: consumableItemId,
+            quitPlanId: quitPlanId,
+            type: type,
+            timestamp: timestampToDate(data["timestamp"]) ?? .now,
+            value: data["value"] as? Double,
+            note: data["note"] as? String,
+            createdAt: timestampToDate(data["createdAt"]) ?? .now,
+            updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
+            isArchived: data["isArchived"] as? Bool ?? false
+        )
+    }
+
+    private func relapseEvent(from data: [String: Any], fallbackId: String, userId: String) -> RelapseEvent? {
+        guard
+            let consumableItemId = data["consumableItemId"] as? String,
+            let quitPlanId = data["quitPlanId"] as? String
+        else {
+            return nil
+        }
+
+        return RelapseEvent(
+            id: (data["id"] as? String) ?? fallbackId,
+            userId: (data["userId"] as? String) ?? userId,
+            consumableItemId: consumableItemId,
+            quitPlanId: quitPlanId,
+            timestamp: timestampToDate(data["timestamp"]) ?? .now,
+            amount: data["amount"] as? Double,
+            unit: (data["unit"] as? String).flatMap(ConsumeUnit.init(rawValue:)),
+            reason: data["reason"] as? String,
+            createdConsumeEntryId: data["createdConsumeEntryId"] as? String,
+            createdAt: timestampToDate(data["createdAt"]) ?? .now,
+            updatedAt: timestampToDate(data["updatedAt"]) ?? .now,
+            isArchived: data["isArchived"] as? Bool ?? false
+        )
+    }
+
 
     // MARK: - helpers
 
@@ -731,4 +1075,7 @@ enum FirestorePath {
     static let consumeEntries = "consumeEntries"
     static let purchaseEntries = "purchaseEntries"
     static let rewardEntries = "rewardEntries"
+    static let quitPlans = "quitPlans"
+    static let quitPlanEvents = "quitPlanEvents"
+    static let relapseEvents = "relapseEvents"
 }
