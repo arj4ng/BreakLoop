@@ -106,6 +106,16 @@ final class DashboardViewModel: ObservableObject {
         return RecoveryTemplateRegistry.template(id: plan.templateId, fallback: plan.category)
     }
 
+    var selectedMostRecentClosedQuitPlan: QuitPlan? {
+        guard let item = selectedItem else { return nil }
+        return state.quitPlans
+            .filter { !$0.isArchived }
+            .filter { $0.consumableItemId == item.id }
+            .filter { $0.status == .completed || $0.status == .relapsed }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .first
+    }
+
     // startet realtime nur einmal pro view model
     func start() {
         guard listeners.isEmpty else { return }
@@ -259,6 +269,58 @@ final class DashboardViewModel: ObservableObject {
         }
     }
 
+    func startQuit(for item: ConsumableItem, startDate: Date) async {
+        let fallbackProfile = state.profile ?? UserProfile(
+            id: userId,
+            displayName: "User",
+            preferredCurrencyCode: "EUR",
+            baselineDailyConsume: 0,
+            baselineCostPerConsume: nil,
+            isGuestAccount: scope == .guest,
+            onboardingCompleted: true
+        )
+
+        let baselineDaily = item.reduceBaselineDailyAmount ?? calculationService.calculateDailyAverage(
+            entries: state.entries,
+            item: item,
+            profile: fallbackProfile,
+            lookbackDays: TrackingConstants.defaultAverageLookbackDays,
+            now: startDate
+        )
+
+        let baselineCost = item.reduceBaselineCostPerConsume ?? calculationService.calculateEstimatedCostPerConsume(
+            item: item,
+            purchases: state.purchases,
+            profile: fallbackProfile,
+            useProfileFallback: true
+        )
+
+        do {
+            _ = try await quitPlanService.startPlan(
+                userId: userId,
+                item: item,
+                mode: .quit,
+                baselineDailyConsume: baselineDaily,
+                baselineCostPerConsume: baselineCost,
+                startDate: startDate,
+                scope: scope
+            )
+            entryActionMessage = DashboardEntryActionMessage(text: "Quit mode started")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
+    func returnSelectedToReduce() async {
+        guard let plan = selectedActiveQuitPlan else { return }
+        do {
+            _ = try await quitPlanService.transition(plan: plan, to: .completed, note: "Returned to reduce mode", scope: scope)
+            entryActionMessage = DashboardEntryActionMessage(text: "Returned to reduce mode")
+        } catch {
+            entryActionMessage = DashboardEntryActionMessage(text: error.localizedDescription, isError: true)
+        }
+    }
+
     // snapshot daten übernehmen und aktive items für ui sortieren
     private func applyRealtimePayload(_ payload: DashboardRealtimePayload) {
         state.profile = payload.profile
@@ -353,13 +415,22 @@ final class DashboardViewModel: ObservableObject {
             consumableItemId: selectedItem.id,
             within: monthInterval
         )
-        let monthSaved = calculationService.calculateSavedMoneyForMonth(
+        let averageDaily = selectedItem.reduceBaselineDailyAmount ?? calculationService.calculateDailyAverage(
             entries: state.entries,
-            purchases: state.purchases,
             item: selectedItem,
             profile: fallbackProfile,
-            date: now
+            lookbackDays: TrackingConstants.defaultAverageLookbackDays,
+            now: now
         )
+        let estimatedCostPerConsume = selectedItem.reduceBaselineCostPerConsume ?? calculationService.calculateEstimatedCostPerConsume(
+            item: selectedItem,
+            purchases: state.purchases,
+            profile: fallbackProfile,
+            useProfileFallback: true
+        )
+        let monthDays = Calendar.current.range(of: .day, in: .month, for: now)?.count ?? 30
+        let baselineExpectedMonthSpend = Decimal(averageDaily * Double(monthDays)) * estimatedCostPerConsume
+        let monthSaved = max(.zero, baselineExpectedMonthSpend - consumedSpend)
 
         // item rewards + allgemeine rewards zählen
         let points = state.rewards
@@ -396,8 +467,8 @@ final class DashboardViewModel: ObservableObject {
             DashboardKPI(
                 id: .monthSpent,
                 title: "Month spent",
-                primary: DashboardKPIValue(display: formatMoney(consumedSpend, currencyCode: currencyCode), rawNumeric: NSDecimalNumber(decimal: consumedSpend).doubleValue),
-                secondary: "Purchased: \(formatMoney(purchaseSpend, currencyCode: currencyCode))"
+                primary: DashboardKPIValue(display: formatMoney(purchaseSpend, currencyCode: currencyCode), rawNumeric: NSDecimalNumber(decimal: purchaseSpend).doubleValue),
+                secondary: "Consume cost: \(formatMoney(consumedSpend, currencyCode: currencyCode))"
             ),
             DashboardKPI(
                 id: .monthSaved,

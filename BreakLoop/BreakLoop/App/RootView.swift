@@ -298,6 +298,8 @@ struct RootView: View {
                 defaultAmountPerConsume: draft.firstConsumableTrackAmount,
                 defaultUnitsPerPurchase: draft.firstConsumableUnitsPerPurchase,
                 defaultCostPerConsume: nil,
+                reduceBaselineDailyAmount: draft.baselineDailyConsume,
+                reduceBaselineCostPerConsume: draft.baselineCostPerConsume,
                 note: nil,
                 consumePresetName: draft.firstConsumableTrackName,
                 purchasePresetName: draft.firstConsumablePurchaseName,

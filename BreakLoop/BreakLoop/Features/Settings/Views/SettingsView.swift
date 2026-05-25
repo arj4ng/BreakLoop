@@ -51,8 +51,8 @@ struct SettingsView: View {
                         settingsRow(icon: "person.crop.circle", title: "Profile", subtitle: viewModel.profile?.displayName)
                     }
                     .buttonStyle(.plain)
-                    settingsRow(icon: "bell.badge", title: "Notifications")
-                    settingsRow(icon: "externaldrive", title: "Data")
+                    settingsRow(icon: "bell.badge", title: "Notifications", badge: "Coming Soon")
+                    settingsRow(icon: "externaldrive", title: "Data", badge: "Coming Soon")
                 }
 
                 Section {
@@ -92,7 +92,7 @@ struct SettingsView: View {
         }
     }
 
-    private func settingsRow(icon: String, title: String, subtitle: String? = nil) -> some View {
+    private func settingsRow(icon: String, title: String, subtitle: String? = nil, badge: String? = nil) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
@@ -107,7 +107,21 @@ struct SettingsView: View {
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(AppColors.textSecondary)
-                }
+                    }
+            }
+
+            Spacer(minLength: 8)
+
+            if let badge {
+                Text(badge)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(AppColors.accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(AppColors.accent.opacity(0.14))
+                    )
             }
         }
     }
@@ -284,6 +298,8 @@ private struct ConsumablesSettingsView: View {
                     purchaseName: submission.purchaseName,
                     purchaseAmountText: submission.purchaseAmountText,
                     purchaseUnit: submission.purchaseUnit,
+                    reduceBaselineDailyAmountText: submission.reduceBaselineDailyAmountText,
+                    reduceBaselineCostPerConsumeText: submission.reduceBaselineCostPerConsumeText,
                     existingItem: existingItem
                 )
             }
@@ -429,6 +445,13 @@ struct ConsumableFormRoute: Identifiable {
 }
 
 struct ConsumableFormView: View {
+    enum InputMode: String, CaseIterable, Identifiable {
+        case simple = "Simple"
+        case advanced = "Advanced"
+
+        var id: String { rawValue }
+    }
+
     let item: ConsumableItem?
     let onSave: @MainActor (ConsumableFormSubmission, ConsumableItem?) async -> Bool
 
@@ -457,8 +480,8 @@ struct ConsumableFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("Name", text: $form.name)
+                Section("Basics") {
+                    TextField("Name (shown in picker)", text: $form.name)
                         .textInputAutocapitalization(.words)
 
                     Picker("Type", selection: $form.category) {
@@ -474,42 +497,119 @@ struct ConsumableFormView: View {
                     }
                 }
 
-                Section("One consume") {
-                    TextField("Track name", text: $form.trackName)
-                        .textInputAutocapitalization(.words)
+                Section("Input mode") {
+                    Picker("Input mode", selection: $form.inputMode) {
+                        ForEach(InputMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
 
-                    TextField("Amount", text: $form.trackAmountText)
-                        .keyboardType(.decimalPad)
+                    Text(form.inputMode == .simple
+                         ? "Simple = daily usage + package price. App calculates cost/consume."
+                         : "Advanced = full control of consume + cost mapping.")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.textSecondary)
+                }
 
-                    Picker("Unit", selection: $form.trackUnit) {
-                        ForEach(ConsumeUnit.allCases, id: \.self) { unit in
-                            Text(unit.rawValue.capitalized).tag(unit)
+                if form.inputMode == .simple {
+                    Section("Daily baseline") {
+                        TextField("Consumes per day", text: $form.reduceBaselineDailyAmountText)
+                            .keyboardType(.decimalPad)
+                    }
+
+                    Section("Package cost") {
+                        TextField("Price per \(form.purchaseName.lowercased())", text: $form.packagePriceText)
+                            .keyboardType(.decimalPad)
+
+                        TextField("\(form.purchaseName) amount", text: $form.purchaseAmountText)
+                            .keyboardType(.decimalPad)
+
+                        Picker("Purchase unit", selection: $form.purchaseUnit) {
+                            ForEach(ConsumeUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue.capitalized).tag(unit)
+                            }
+                        }
+                    }
+
+                    Section("Auto cost mapping") {
+                        LabeledContent("One consume") {
+                            Text("\(form.costAmountPerTrackText) \(form.costUnit.rawValue)")
+                                .foregroundStyle(AppColors.textSecondary)
+                        }
+
+                        LabeledContent("Cost / consume") {
+                            Text(form.reduceBaselineCostPerConsumeTextForDisplay)
+                                .foregroundStyle(AppColors.textPrimary)
+                        }
+
+                        if let formula = form.formulaPreviewLine {
+                            Text(formula)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppColors.textSecondary)
+                        }
+
+                        if let formula = form.monthlyPreviewLine {
+                            Text(formula)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppColors.accent)
+                        }
+
+                        if let monthly = form.monthlyEstimatedSpend {
+                            LabeledContent("Estimated monthly spend") {
+                                Text(form.formatCurrency(monthly))
+                                    .foregroundStyle(AppColors.textPrimary)
+                            }
+                        }
+                    }
+                } else {
+                    Section("One consume") {
+                        TextField("Consume label (e.g. Joint)", text: $form.trackName)
+                            .textInputAutocapitalization(.words)
+
+                        TextField("Amount", text: $form.trackAmountText)
+                            .keyboardType(.decimalPad)
+
+                        Picker("Unit", selection: $form.trackUnit) {
+                            ForEach(ConsumeUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue.capitalized).tag(unit)
+                            }
+                        }
+                    }
+
+                    Section("Cost basis") {
+                        TextField("One consume uses", text: $form.costAmountPerTrackText)
+                            .keyboardType(.decimalPad)
+
+                        Picker("Cost unit", selection: $form.costUnit) {
+                            ForEach(ConsumeUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue.capitalized).tag(unit)
+                            }
+                        }
+                    }
+
+                    Section("Bought as") {
+                        TextField("Purchase name", text: $form.purchaseName)
+                            .textInputAutocapitalization(.words)
+
+                        TextField("Default amount", text: $form.purchaseAmountText)
+                            .keyboardType(.decimalPad)
+
+                        Picker("Purchase unit", selection: $form.purchaseUnit) {
+                            ForEach(ConsumeUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue.capitalized).tag(unit)
+                            }
                         }
                     }
                 }
 
-                Section("Cost basis") {
-                    TextField("One consume uses", text: $form.costAmountPerTrackText)
+                Section("Reduce baseline") {
+                    TextField("Consumes per day", text: $form.reduceBaselineDailyAmountText)
                         .keyboardType(.decimalPad)
 
-                    Picker("Cost unit", selection: $form.costUnit) {
-                        ForEach(ConsumeUnit.allCases, id: \.self) { unit in
-                            Text(unit.rawValue.capitalized).tag(unit)
-                        }
-                    }
-                }
-
-                Section("Bought as") {
-                    TextField("Purchase name", text: $form.purchaseName)
-                        .textInputAutocapitalization(.words)
-
-                    TextField("Default amount", text: $form.purchaseAmountText)
-                        .keyboardType(.decimalPad)
-
-                    Picker("Purchase unit", selection: $form.purchaseUnit) {
-                        ForEach(ConsumeUnit.allCases, id: \.self) { unit in
-                            Text(unit.rawValue.capitalized).tag(unit)
-                        }
+                    LabeledContent("Cost / consume") {
+                        Text(form.reduceBaselineCostPerConsumeTextForDisplay)
+                            .foregroundStyle(AppColors.textPrimary)
                     }
                 }
             }
@@ -554,6 +654,7 @@ final class ConsumableFormState: ObservableObject {
     @Published var name: String
     @Published var category: ConsumableCategory
     @Published var consumePresetId: String
+    @Published var inputMode: ConsumableFormView.InputMode
     @Published var trackName: String
     @Published var trackAmountText: String
     @Published var trackUnit: ConsumeUnit
@@ -561,8 +662,10 @@ final class ConsumableFormState: ObservableObject {
     @Published var costAmountPerTrackText: String
     @Published var costUnit: ConsumeUnit
     @Published var purchaseName: String
+    @Published var packagePriceText: String
     @Published var purchaseAmountText: String
     @Published var purchaseUnit: ConsumeUnit
+    @Published var reduceBaselineDailyAmountText: String
 
     init(item: ConsumableItem?) {
         let category = item?.category ?? .custom
@@ -572,6 +675,7 @@ final class ConsumableFormState: ObservableObject {
         self.name = item?.name ?? ""
         self.category = category
         self.consumePresetId = matchedPreset.id
+        self.inputMode = item == nil ? .simple : .advanced
         self.trackName = item?.trackName ?? item?.consumePresetName ?? matchedPreset.trackName
         self.trackAmountText = item?.trackAmount.map { String($0) } ?? item?.defaultAmountPerConsume.map { String($0) } ?? matchedPreset.trackAmountText
         self.trackUnit = item?.trackUnit ?? item?.defaultUnit ?? matchedPreset.trackUnit
@@ -579,8 +683,19 @@ final class ConsumableFormState: ObservableObject {
         self.costAmountPerTrackText = item?.costAmountPerTrack.map { String($0) } ?? item.map { String($0.effectiveCostAmountPerTrack) } ?? matchedPreset.costAmountPerTrackText
         self.costUnit = item?.costUnit ?? item?.effectiveCostUnit ?? matchedPreset.costUnit
         self.purchaseName = item?.purchaseName ?? item?.purchasePresetName ?? matchedPreset.purchaseName
+        self.packagePriceText = ""
         self.purchaseAmountText = item?.defaultPurchaseAmount.map { String($0) } ?? item?.defaultUnitsPerPurchase.map { String($0) } ?? matchedPreset.defaultPurchaseAmountText
         self.purchaseUnit = item?.defaultPurchaseUnit ?? matchedPreset.defaultPurchaseUnit
+        self.reduceBaselineDailyAmountText = item?.reduceBaselineDailyAmount.map { String($0) } ?? ""
+
+        if let baselineCost = item?.reduceBaselineCostPerConsume,
+           let purchaseAmount = parseDouble(self.purchaseAmountText),
+           purchaseAmount > 0,
+           let consumeCostAmount = parseDouble(self.costAmountPerTrackText),
+           consumeCostAmount > 0 {
+            let packagePrice = baselineCost * (Decimal(purchaseAmount) / Decimal(consumeCostAmount))
+            self.packagePriceText = NSDecimalNumber(decimal: packagePrice).stringValue
+        }
     }
 
     var canSave: Bool {
@@ -589,7 +704,16 @@ final class ConsumableFormState: ObservableObject {
         let trackAmount = Double(trackAmountText.replacingOccurrences(of: ",", with: "."))
         let costAmount = Double(costAmountPerTrackText.replacingOccurrences(of: ",", with: "."))
         let purchaseAmount = Double(purchaseAmountText.replacingOccurrences(of: ",", with: "."))
-        return hasName && hasTrackName && (trackAmount ?? 0) > 0 && (costAmount ?? 0) > 0 && (purchaseAmount ?? 0) > 0
+        let baselineDaily = Double(reduceBaselineDailyAmountText.replacingOccurrences(of: ",", with: "."))
+        let packagePrice = Decimal(string: packagePriceText.replacingOccurrences(of: ",", with: "."))
+        let hasBaselineCost = reduceBaselineCostPerConsumeDecimal != nil || (packagePrice ?? 0) > 0
+        return hasName
+            && hasTrackName
+            && (trackAmount ?? 0) > 0
+            && (costAmount ?? 0) > 0
+            && (purchaseAmount ?? 0) > 0
+            && (baselineDaily ?? 0) > 0
+            && hasBaselineCost
     }
 
     func makeSubmission(selectedPreset: ConsumableSetupPreset) -> ConsumableFormSubmission {
@@ -605,7 +729,9 @@ final class ConsumableFormState: ObservableObject {
             costUnit: costUnit,
             purchaseName: purchaseName,
             purchaseAmountText: purchaseAmountText,
-            purchaseUnit: purchaseUnit
+            purchaseUnit: purchaseUnit,
+            reduceBaselineDailyAmountText: reduceBaselineDailyAmountText,
+            reduceBaselineCostPerConsumeText: reduceBaselineCostPerConsumeTextForSave
         )
     }
 
@@ -625,6 +751,88 @@ final class ConsumableFormState: ObservableObject {
         purchaseName = preset.purchaseName
         purchaseAmountText = preset.defaultPurchaseAmountText
         purchaseUnit = preset.defaultPurchaseUnit
+    }
+
+    var reduceBaselineCostPerConsumeTextForDisplay: String {
+        if let value = reduceBaselineCostPerConsumeDecimal {
+            return NSDecimalNumber(decimal: value).stringValue
+        }
+        return "—"
+    }
+
+    var reduceBaselineCostPerConsumeTextForSave: String {
+        if let value = reduceBaselineCostPerConsumeDecimal {
+            return NSDecimalNumber(decimal: value).stringValue
+        }
+        return ""
+    }
+
+    var monthlyEstimatedSpend: Decimal? {
+        simpleInput.monthlyEstimatedSpend(consumeUnitAmount: consumeUnitCostAmount)
+    }
+
+    var formulaPreviewLine: String? {
+        guard let packagePrice = simpleInput.purchasePrice,
+              let purchaseAmount = simpleInput.purchaseQuantity, purchaseAmount > 0,
+              let perUnit = simpleInput.costPerUnit else { return nil }
+        return "\(formatCurrency(packagePrice)) / \(prettyNumber(purchaseAmount)) \(purchaseUnit.rawValue) = \(formatCurrency(perUnit)) / \(purchaseUnit.rawValue)"
+    }
+
+    var monthlyPreviewLine: String? {
+        guard let daily = simpleInput.dailyAmount, daily > 0,
+              let perUnit = simpleInput.costPerUnit,
+              let monthly = monthlyEstimatedSpend else { return nil }
+        return "\(prettyNumber(daily)) × 30 × \(formatCurrency(perUnit)) = \(formatCurrency(monthly))"
+    }
+
+    private var reduceBaselineCostPerConsumeDecimal: Decimal? {
+        let packagePrice = Decimal(string: packagePriceText.replacingOccurrences(of: ",", with: "."))
+        let purchaseAmount = parseDouble(purchaseAmountText)
+        let consumeCostAmount = parseDouble(costAmountPerTrackText)
+
+        if let packagePrice,
+           packagePrice > 0,
+           let purchaseAmount,
+           purchaseAmount > 0,
+           let consumeCostAmount,
+           consumeCostAmount > 0 {
+            let unitPrice = packagePrice / Decimal(purchaseAmount)
+            return unitPrice * Decimal(consumeCostAmount)
+        }
+
+        return nil
+    }
+
+    private var consumeUnitCostAmount: Double {
+        parseDouble(costAmountPerTrackText) ?? 1
+    }
+
+    private var simpleInput: SimpleConsumptionInput {
+        SimpleConsumptionInput(
+            dailyAmountText: reduceBaselineDailyAmountText,
+            dailyUnit: trackUnit,
+            purchasePriceText: packagePriceText,
+            purchaseQuantityText: purchaseAmountText,
+            purchaseUnit: purchaseUnit
+        )
+    }
+
+    func formatCurrency(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        return formatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(value)"
+    }
+
+    private func prettyNumber(_ value: Double) -> String {
+        if value.rounded() == value {
+            return String(Int(value))
+        }
+        return String(format: "%.2f", value).replacingOccurrences(of: ".00", with: "")
+    }
+
+    private func parseDouble(_ text: String) -> Double? {
+        Double(text.replacingOccurrences(of: ",", with: "."))
     }
 }
 

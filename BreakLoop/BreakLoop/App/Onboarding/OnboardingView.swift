@@ -178,7 +178,7 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes: return .piece
             case .vape: return .dose
-            case .weed: return .piece
+            case .weed: return .gram
             case .alcohol: return .cup
             case .caffeine: return .cup
             case .custom: return .other
@@ -200,7 +200,7 @@ struct OnboardingView: View {
             switch self {
             case .cigarettes: return .perPiece
             case .vape: return .perSession
-            case .weed: return .perPiece
+            case .weed: return .perGram
             case .alcohol: return .perCup
             case .caffeine: return .perCup
             case .custom: return .custom
@@ -597,6 +597,13 @@ struct OnboardingView: View {
     }
 
     private var visibleSteps: [Step] {
+        if effectiveType == .weed {
+            if isConsumableOnly {
+                return [.mode, .consumable, .dailyAmount, .unitPrice, .summary]
+            }
+            return [.welcome, .mode, .consumable, .dailyAmount, .unitPrice, .summary]
+        }
+
         if isConsumableOnly {
             switch pricingMode {
             case .unit:
@@ -615,6 +622,9 @@ struct OnboardingView: View {
     }
 
     private var priceQuestionTitle: String {
+        if effectiveType == .weed {
+            return "How much did that bag cost?"
+        }
         switch pricingMode {
         case .unit:
             return "What does one \(effectiveUnitOption.label) usually cost?"
@@ -624,6 +634,9 @@ struct OnboardingView: View {
     }
 
     private var priceQuestionSubtitle: String {
+        if effectiveType == .weed {
+            return "Enter full price you pay for one bag. Next screen asks how many grams that bag has."
+        }
         switch pricingMode {
         case .unit:
             return "Enter direct price per \(effectiveUnitOption.label)."
@@ -633,13 +646,16 @@ struct OnboardingView: View {
     }
 
     private var quantityQuestionTitle: String {
-        "How much is in one purchase?"
+        if effectiveType == .weed {
+            return "How many grams in that bag?"
+        }
+        return "How much is in one purchase?"
     }
 
     private var quantityQuestionSubtitle: String {
         switch effectiveType {
         case .weed:
-            return "Used to calculate cost per \(setupPreset.trackName)."
+            return "Example: if you buy a 5g bag, enter 5."
         case .cigarettes:
             return "Used to calculate cost per cigarette."
         case .vape:
@@ -652,31 +668,15 @@ struct OnboardingView: View {
     }
 
     private var costPerUnit: Decimal? {
-        guard let price = unitPriceValue else { return nil }
-        guard price > 0 else { return nil }
-
-        switch pricingMode {
-        case .unit:
-            return price
-        case .package:
-            let amountDecimal = Decimal(quantityValue)
-            guard amountDecimal > 0 else { return nil }
-            return price / amountDecimal
-        }
+        simpleInput.costPerUnit
     }
 
     private var costPerConsume: Decimal? {
-        guard let unitCost = costPerUnit else { return nil }
-        let amountText = setupPreset.costAmountPerTrackText.replacingOccurrences(of: ",", with: ".")
-        let amount = Decimal(string: amountText) ?? 1
-        return unitCost * amount
+        simpleInput.costPerConsume(consumeUnitAmount: consumeUnitCostAmount)
     }
 
     private var monthlySpend: Decimal? {
-        guard let unitCost = costPerConsume else { return nil }
-        let monthlyUnits = Decimal(monthlyUsageEstimate)
-        guard monthlyUnits > 0 else { return nil }
-        return unitCost * monthlyUnits
+        simpleInput.monthlyEstimatedSpend(consumeUnitAmount: consumeUnitCostAmount)
     }
 
     private var monthlySavingsAt25: Decimal? {
@@ -685,6 +685,9 @@ struct OnboardingView: View {
     }
 
     private var monthlySpendPreviewOnPriceStep: Decimal? {
+        if effectiveType == .weed {
+            return monthlySpend
+        }
         switch pricingMode {
         case .unit:
             return monthlySpend
@@ -712,10 +715,10 @@ struct OnboardingView: View {
         case .dailyAmount:
             return dailyAmountValue > 0
         case .unitPrice:
-            if let price = unitPriceValue {
-                return price > 0
+            if effectiveType == .weed {
+                return (simpleInput.purchasePrice ?? 0) > 0 && (simpleInput.purchaseQuantity ?? 0) > 0
             }
-            return false
+            return (unitPriceValue ?? 0) > 0
         case .quantityPerPurchase:
             if pricingMode == .unit { return true }
             return quantityValue > 0
@@ -742,6 +745,21 @@ struct OnboardingView: View {
     private var unitPriceAnchorId: String { "unit-price-anchor" }
     private var quantityAnchorId: String { "quantity-anchor" }
     private var customUnitAnchorId: String { "custom-unit-anchor" }
+
+    private var consumeUnitCostAmount: Double {
+        let amountText = setupPreset.costAmountPerTrackText.replacingOccurrences(of: ",", with: ".")
+        return Double(amountText) ?? 1
+    }
+
+    private var simpleInput: SimpleConsumptionInput {
+        SimpleConsumptionInput(
+            dailyAmountText: String(dailyAmountValue),
+            dailyUnit: effectiveUnitOption.consumeUnit,
+            purchasePriceText: unitPriceText,
+            purchaseQuantityText: quantityCustomText.isEmpty ? String(quantityInPurchase) : quantityCustomText,
+            purchaseUnit: setupPreset.defaultPurchaseUnit
+        )
+    }
 
     var body: some View {
         ZStack {
@@ -1281,7 +1299,7 @@ struct OnboardingView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Price")
+                    Text(effectiveType == .weed ? "Bag price" : "Price")
                         .font(.subheadline)
                         .foregroundStyle(Color("TextSecondary"))
 
@@ -1302,6 +1320,30 @@ struct OnboardingView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .id(unitPriceAnchorId)
+
+                if effectiveType == .weed {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Grams in bag")
+                            .font(.subheadline)
+                            .foregroundStyle(Color("TextSecondary"))
+
+                        HStack(spacing: 6) {
+                            TextField("0", text: $quantityCustomText)
+                                .keyboardType(.decimalPad)
+                                .font(.title2.weight(.semibold))
+                                .foregroundStyle(Color("TextPrimary"))
+                                .focused($focusedField, equals: .quantityCustom)
+
+                            Text("g")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(Color("TextSecondary"))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(Color("SurfaceElevated").opacity(0.88))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
             }
             .padding(14)
             .background(
@@ -1322,6 +1364,21 @@ struct OnboardingView: View {
                     Text("Complete next step for monthly estimate")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color("TextSecondary"))
+                }
+
+                if effectiveType == .weed,
+                   let price = simpleInput.purchasePrice,
+                   let grams = simpleInput.purchaseQuantity,
+                   grams > 0,
+                   let perUnit = simpleInput.costPerUnit,
+                   let monthly = monthlySpend {
+                    Text("\(formatCurrency(price)) / \(prettyNumber(grams))g = \(formatCurrency(perUnit))/g")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color("TextSecondary"))
+
+                    Text("\(prettyNumber(dailyAmountValue))g × 30 × \(formatCurrency(perUnit)) = \(formatCurrency(monthly))")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color("BrandAccentStrong"))
                 }
             }
         }

@@ -70,6 +70,12 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
     // fallback wenn keine purchase daten da sind
     var defaultCostPerConsume: Decimal?
 
+    // reduce baseline pro tag für savings/reward model
+    var reduceBaselineDailyAmount: Double?
+
+    // reduce baseline kosten pro consume
+    var reduceBaselineCostPerConsume: Decimal?
+
     var note: String?
 
     // ui preset für verständliche consume anzeige zB joint, gum, beer
@@ -120,6 +126,8 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         defaultAmountPerConsume: Double? = nil,
         defaultUnitsPerPurchase: Double? = nil,
         defaultCostPerConsume: Decimal? = nil,
+        reduceBaselineDailyAmount: Double? = nil,
+        reduceBaselineCostPerConsume: Decimal? = nil,
         note: String? = nil,
         consumePresetName: String? = nil,
         purchasePresetName: String? = nil,
@@ -147,6 +155,8 @@ struct ConsumableItem: Identifiable, Codable, Hashable, Sendable {
         self.defaultAmountPerConsume = defaultAmountPerConsume
         self.defaultUnitsPerPurchase = defaultUnitsPerPurchase.map { max(0, $0) }
         self.defaultCostPerConsume = defaultCostPerConsume
+        self.reduceBaselineDailyAmount = reduceBaselineDailyAmount.map { max(0, $0) }
+        self.reduceBaselineCostPerConsume = reduceBaselineCostPerConsume
         self.note = note
         self.consumePresetName = consumePresetName
         self.purchasePresetName = purchasePresetName

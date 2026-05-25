@@ -153,6 +153,8 @@ final class SettingsViewModel: ObservableObject {
         purchaseName: String,
         purchaseAmountText: String,
         purchaseUnit: ConsumeUnit,
+        reduceBaselineDailyAmountText: String,
+        reduceBaselineCostPerConsumeText: String,
         existingItem: ConsumableItem?
     ) async -> Bool {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -161,6 +163,8 @@ final class SettingsViewModel: ObservableObject {
         let parsedTrackAmount = Double(trackAmountText.replacingOccurrences(of: ",", with: "."))
         let parsedCostAmount = Double(costAmountPerTrackText.replacingOccurrences(of: ",", with: "."))
         let parsedPurchaseAmount = Double(purchaseAmountText.replacingOccurrences(of: ",", with: "."))
+        let parsedBaselineDaily = Double(reduceBaselineDailyAmountText.replacingOccurrences(of: ",", with: "."))
+        let parsedBaselineCost = Decimal(string: reduceBaselineCostPerConsumeText.replacingOccurrences(of: ",", with: "."))
 
         guard !trimmedName.isEmpty,
               !trimmedTrackName.isEmpty,
@@ -175,6 +179,15 @@ final class SettingsViewModel: ObservableObject {
             return false
         }
 
+        let reduceBaselineDailyAmount: Double? = {
+            if let parsedBaselineDaily, parsedBaselineDaily > 0 { return parsedBaselineDaily }
+            return existingItem?.reduceBaselineDailyAmount
+        }()
+        let reduceBaselineCostPerConsume: Decimal? = {
+            if let parsedBaselineCost, parsedBaselineCost > 0 { return parsedBaselineCost }
+            return existingItem?.reduceBaselineCostPerConsume
+        }()
+
         let now = Date()
         let item = ConsumableItem(
             id: existingItem?.id ?? UUID().uuidString,
@@ -188,6 +201,8 @@ final class SettingsViewModel: ObservableObject {
             defaultAmountPerConsume: parsedTrackAmount,
             defaultUnitsPerPurchase: parsedPurchaseAmount,
             defaultCostPerConsume: nil,
+            reduceBaselineDailyAmount: reduceBaselineDailyAmount,
+            reduceBaselineCostPerConsume: reduceBaselineCostPerConsume,
             note: existingItem?.note,
             consumePresetName: consumePresetName,
             purchasePresetName: trimmedPurchaseName,

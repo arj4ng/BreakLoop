@@ -26,13 +26,15 @@ struct DashboardView: View {
     private enum ConsumableActionTarget: Identifiable {
         case delete(ConsumableItem)
         case relapse(ConsumableItem)
+        case returnReduce(ConsumableItem)
 
         var id: String {
             switch self {
             case .delete(let item): return "delete-\(item.id)"
             case .relapse(let item): return "relapse-\(item.id)"
+            case .returnReduce(let item): return "reduce-\(item.id)"
+            }
         }
-    }
     }
     // eigene tab auswahl, weil native iOS 26 tabbar als floating capsule rendert
     private enum DashboardTab: String, CaseIterable, Identifiable {
@@ -124,6 +126,8 @@ struct DashboardView: View {
                     purchaseName: submission.purchaseName,
                     purchaseAmountText: submission.purchaseAmountText,
                     purchaseUnit: submission.purchaseUnit,
+                    reduceBaselineDailyAmountText: submission.reduceBaselineDailyAmountText,
+                    reduceBaselineCostPerConsumeText: submission.reduceBaselineCostPerConsumeText,
                     existingItem: existingItem
                 )
             }
@@ -198,7 +202,7 @@ struct DashboardView: View {
                             let selectedItem = item
                             let quitDate = pendingStartQuitDate
                             Task {
-                                await settingsViewModel.startQuitPlan(for: selectedItem, startDate: quitDate)
+                                await viewModel.startQuit(for: selectedItem, startDate: quitDate)
                                 pendingStartQuitItem = nil
                             }
                         }
@@ -230,6 +234,30 @@ struct DashboardView: View {
         } message: {
             Text("This logs relapse for \(actionItemName).")
         }
+        .confirmationDialog(
+            "Return to reduce mode?",
+            isPresented: Binding(
+                get: {
+                    if case .returnReduce = pendingConsumableAction { return true }
+                    return false
+                },
+                set: { if !$0 { pendingConsumableAction = nil } }
+            )
+        ) {
+            Button("Return") {
+                guard case .returnReduce(let item) = pendingConsumableAction else { return }
+                Task {
+                    viewModel.selectConsumable(id: item.id)
+                    await viewModel.returnSelectedToReduce()
+                    pendingConsumableAction = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingConsumableAction = nil
+            }
+        } message: {
+            Text("Quit tracking closes. Reduce mode resumes for \(actionItemName).")
+        }
     }
 
     @ViewBuilder
@@ -260,7 +288,7 @@ struct DashboardView: View {
     private var detailsTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                header(title: viewModel.isSelectedConsumableInQuitMode ? "Recovery" : "Details")
+                header(title: viewModel.isSelectedConsumableInQuitMode ? "Recovery Timeline" : "Details")
                 detailsContent
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,7 +302,7 @@ struct DashboardView: View {
     }
 
     private var bottomControls: some View {
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             if !viewModel.isSelectedConsumableInQuitMode {
                 EntryActionDock(
                     onPurchaseTap: {
@@ -374,8 +402,22 @@ struct DashboardView: View {
             consumablePicker
 
             if viewModel.isSelectedConsumableInQuitMode {
+                if let plan = viewModel.selectedActiveQuitPlan {
+                    continuityCard(
+                        icon: "pause.circle.fill",
+                        title: "Reduce paused",
+                        subtitle: "Baseline carried: \(formatAmount(plan.baselineDailyConsume ?? 0))/day"
+                    )
+                }
                 quitDashboardContent
             } else {
+                if let closedPlan = viewModel.selectedMostRecentClosedQuitPlan {
+                    continuityCard(
+                        icon: "arrow.clockwise.circle.fill",
+                        title: "Reduce resumed",
+                        subtitle: "Last quit ended \(formatDateTime(closedPlan.updatedAt))"
+                    )
+                }
                 dashboardOverviewHeader
                 activityMonitorCard
                 dashboardCostSection
@@ -383,6 +425,33 @@ struct DashboardView: View {
                 emptyHint
             }
         }
+    }
+
+    private func continuityCard(icon: String, title: String, subtitle: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(AppColors.accent)
+                .frame(width: 28, height: 28)
+                .background(AppColors.accent.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .appTypography(AppTypography.bodyEmphasis)
+                    .foregroundStyle(AppColors.textPrimary)
+                Text(subtitle)
+                    .appTypography(AppTypography.caption1)
+                    .foregroundStyle(AppColors.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppColors.border.opacity(0.16), lineWidth: 1)
+        )
     }
 
     private var quitDashboardContent: some View {
@@ -592,10 +661,21 @@ struct DashboardView: View {
             Button {
                 isConsumableMenuExpanded.toggle()
             } label: {
+                let selectedHasActiveQuit = viewModel.selectedItem.map(itemHasActiveQuitPlan) ?? false
                 HStack(spacing: 8) {
                     Text(viewModel.selectedItem?.name ?? "Select consumable")
                         .appTypography(AppTypography.buttonSecondary)
                         .foregroundStyle(AppColors.textPrimary)
+
+                    Text(selectedHasActiveQuit ? "QUIT" : "REDUCE")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(selectedHasActiveQuit ? AppColors.accent : AppColors.textSecondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill((selectedHasActiveQuit ? AppColors.accent : AppColors.border).opacity(0.14))
+                        )
 
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .semibold))
@@ -624,17 +704,15 @@ struct DashboardView: View {
                                             .appTypography(AppTypography.buttonSecondary)
                                             .foregroundStyle(viewModel.state.selectedConsumableId == item.id ? Color.white : Color.black)
 
-                                        if hasActiveQuit {
-                                            Text("QUIT")
-                                                .font(.system(size: 10, weight: .bold))
-                                                .foregroundStyle(viewModel.state.selectedConsumableId == item.id ? Color.white : Color.black)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 3)
-                                                .background(
-                                                    Capsule()
-                                                        .fill(viewModel.state.selectedConsumableId == item.id ? Color.white.opacity(0.2) : AppColors.accent.opacity(0.14))
-                                                )
-                                        }
+                                        Text(hasActiveQuit ? "QUIT" : "REDUCE")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(viewModel.state.selectedConsumableId == item.id ? Color.white : (hasActiveQuit ? AppColors.accent : Color.black.opacity(0.65)))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 3)
+                                            .background(
+                                                Capsule()
+                                                    .fill(viewModel.state.selectedConsumableId == item.id ? Color.white.opacity(0.2) : (hasActiveQuit ? AppColors.accent : AppColors.border).opacity(0.14))
+                                            )
 
                                         Spacer()
                                     }
@@ -649,32 +727,35 @@ struct DashboardView: View {
                                 }
                                 .buttonStyle(.plain)
 
-                Menu {
-                    Button("Modify") {
-                        editConsumableRoute = ConsumableFormRoute(item: item)
-                    }
-                    if hasActiveQuit {
-                        Button("Relapse") {
-                            pendingConsumableAction = .relapse(item)
+                                Menu {
+                                    Button("Modify") {
+                                        editConsumableRoute = ConsumableFormRoute(item: item)
+                                    }
+                                    if hasActiveQuit {
+                                        Button("Relapse") {
+                                            pendingConsumableAction = .relapse(item)
+                                        }
+                                        Button("Return to reduce") {
+                                            pendingConsumableAction = .returnReduce(item)
+                                        }
+                                    } else {
+                                        Button("Start quitting") {
+                                            pendingStartQuitDate = .now
+                                            pendingStartQuitItem = item
+                                        }
+                                    }
+                                    Button("Delete", role: .destructive) {
+                                        pendingConsumableAction = .delete(item)
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Color.black.opacity(0.75))
+                                        .frame(width: 28, height: 28)
+                                }
+                            }
+                            .padding(.horizontal, 8)
                         }
-                    } else {
-                        Button("Start quitting") {
-                            pendingStartQuitDate = .now
-                            pendingStartQuitItem = item
-                        }
-                    }
-                    Button("Delete", role: .destructive) {
-                        pendingConsumableAction = .delete(item)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.black.opacity(0.75))
-                        .frame(width: 28, height: 28)
-                }
-            }
-            .padding(.horizontal, 8)
-        }
 
                         Divider()
                             .overlay(AppColors.border.opacity(0.4))
@@ -707,7 +788,7 @@ struct DashboardView: View {
                     .offset(y: 44)
                     .zIndex(20)
                     .shadow(color: Color.black.opacity(0.28), radius: 20, x: 0, y: 14)
-                    .frame(minWidth: 280, alignment: .leading)
+                    .frame(minWidth: 320, maxWidth: 380, alignment: .leading)
                 }
             }
             .zIndex(isConsumableMenuExpanded ? 30 : 1)
@@ -716,7 +797,7 @@ struct DashboardView: View {
 
     private var actionItemName: String {
         switch pendingConsumableAction {
-        case .delete(let item), .relapse(let item):
+        case .delete(let item), .relapse(let item), .returnReduce(let item):
             return item.name
         case .none:
             return "this consumable"
@@ -870,10 +951,6 @@ struct DashboardView: View {
         }()
 
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Recovery Timeline")
-                .font(.largeTitle.bold())
-                .foregroundStyle(AppColors.textPrimary)
-
             Text("\(achievedCount) of \(stages.count) milestones achieved")
                 .font(.title3)
                 .foregroundStyle(AppColors.textSecondary)
@@ -1076,6 +1153,8 @@ struct DashboardView: View {
             defaultAmountPerConsume: draft.firstConsumableTrackAmount,
             defaultUnitsPerPurchase: draft.firstConsumableUnitsPerPurchase,
             defaultCostPerConsume: nil,
+            reduceBaselineDailyAmount: draft.baselineDailyConsume,
+            reduceBaselineCostPerConsume: draft.baselineCostPerConsume,
             note: nil,
             consumePresetName: draft.firstConsumableTrackName,
             purchasePresetName: draft.firstConsumablePurchaseName,

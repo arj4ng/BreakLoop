@@ -35,6 +35,8 @@ struct ConsumableFormSubmission: Hashable, Sendable {
     let purchaseName: String
     let purchaseAmountText: String
     let purchaseUnit: ConsumeUnit
+    let reduceBaselineDailyAmountText: String
+    let reduceBaselineCostPerConsumeText: String
 }
 
 struct ConsumableSetupPreset: Identifiable, Hashable {

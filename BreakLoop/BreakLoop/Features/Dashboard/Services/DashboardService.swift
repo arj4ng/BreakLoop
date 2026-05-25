@@ -272,6 +272,8 @@ final class FirestoreDashboardRealtimeService: DashboardRealtimeServiceProtocol 
             defaultAmountPerConsume: data["defaultAmountPerConsume"] as? Double,
             defaultUnitsPerPurchase: data["defaultUnitsPerPurchase"] as? Double,
             defaultCostPerConsume: numberToDecimal(data["defaultCostPerConsume"]),
+            reduceBaselineDailyAmount: data["reduceBaselineDailyAmount"] as? Double,
+            reduceBaselineCostPerConsume: numberToDecimal(data["reduceBaselineCostPerConsume"]),
             note: data["note"] as? String,
             consumePresetName: data["consumePresetName"] as? String,
             purchasePresetName: data["purchasePresetName"] as? String,
