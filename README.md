@@ -17,7 +17,7 @@
   <p>
     <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
     <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
-    <img alt="Status" src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-FF9F0A?style=for-the-badge" />
+    <img alt="Status" src="https://img.shields.io/badge/Status-Abgeschlossen-34C759?style=for-the-badge" />
   </p>
 </div>
 
@@ -119,37 +119,42 @@ BreakLoop/
   </tr>
   <tr>
     <td>Onboarding + Auth UI</td>
-    <td>🟡 In Arbeit</td>
-    <td>Flow steht, dynamisches Consumable Setup ist angebunden, laufender UX/Polish Feinschliff</td>
+    <td>✅ Fertig</td>
+    <td>Flow steht inkl. dynamischem Consumable Setup und stabilem Root Routing</td>
   </tr>
   <tr>
     <td>Feature Screens UI</td>
-    <td>🟡 In Arbeit</td>
-    <td>Dashboard, Recovery/Details und Settings sind nutzbar; laufender UI/UX Polish für Konsistenz und Lesbarkeit</td>
+    <td>✅ Fertig</td>
+    <td>Dashboard, Recovery/Details und Settings sind vollständig nutzbar</td>
   </tr>
   <tr>
     <td>Quit Mode + Recovery</td>
-    <td>✅ Basis fertig</td>
+    <td>✅ Fertig</td>
     <td>Start Quit mit Datum, Relapse Flow, Recovery Kennzahlen und Stage-Vorschau sind integriert und an Firestore angebunden</td>
   </tr>
   <tr>
     <td>Consumable Management UX</td>
-    <td>🟡 In Arbeit</td>
-    <td>Custom Overlay Picker inkl. Actions steht; weitere Micro-UX Verbesserungen laufen</td>
+    <td>✅ Fertig</td>
+    <td>Custom Overlay Picker inkl. Actions (Modify/Delete/Start Quit/Relapse/Return) integriert</td>
   </tr>
   <tr>
     <td>Profile & Security</td>
-    <td>✅ Basis fertig</td>
+    <td>✅ Fertig</td>
     <td>Display-Name Update über Firestore + Passwortwechsel via Firebase Re-Auth umgesetzt; Guest Signup Gate aktiv</td>
   </tr>
   <tr>
     <td>Startup Performance</td>
-    <td>🟡 In Arbeit</td>
-    <td>Dashboard Warm-Cache aktiv; weitere Caching/Load-Time Optimierungen folgen</td>
+    <td>✅ Fertig</td>
+    <td>Dashboard Warm-Cache und Startverhalten für die Kernflows umgesetzt</td>
+  </tr>
+  <tr>
+    <td>Wallpaper + API Integration</td>
+    <td>✅ Fertig</td>
+    <td>Pexels Foto-Suche, Auswahl, Editor, globale Anwendung und lokale Persistenz integriert</td>
   </tr>
 </table>
 
-## Roadmap
+## Abschluss
 
 <table>
   <tr>
@@ -174,25 +179,22 @@ BreakLoop/
   </tr>
   <tr>
     <td><strong>4 · Onboarding & Auth UX</strong></td>
-    <td>🟡 In Arbeit</td>
-    <td>Onboarding/Registration/SignIn Flow mit gutem UX Verhalten und stabilem Routing</td>
+    <td>✅ Fertig</td>
+    <td>Onboarding/Registration/SignIn Flow mit stabilem Routing abgeschlossen</td>
   </tr>
   <tr>
     <td><strong>5 · Entry Flows + Dashboard UI</strong></td>
-    <td>🟡 In Arbeit</td>
-    <td>Consume/Purchase Eingabe, Recovery Modus und Dashboard Live Werte stehen; Insights/Polish folgen</td>
+    <td>✅ Fertig</td>
+    <td>Consume/Purchase Eingabe, Recovery Modus und Dashboard Live Werte vollständig integriert</td>
   </tr>
   <tr>
     <td><strong>6 · Recovery Product Layer</strong></td>
-    <td>🟡 In Arbeit</td>
-    <td>Quit/Relapse UX verfeinern, Recovery Timeline ausbauen, bessere Nudges und Motivation im Alltag</td>
+    <td>✅ Fertig</td>
+    <td>Quit/Relapse, Recovery Timeline und Kennzahlen sind produktiv umgesetzt</td>
+  </tr>
+  <tr>
+    <td><strong>7 · Wallpaper API Feature</strong></td>
+    <td>✅ Fertig</td>
+    <td>Wallpaper Flow inkl. Pexels API Integration, Suche, Editor, Blur und globaler Anwendung abgeschlossen</td>
   </tr>
 </table>
-
-## Aktueller Fokus
-
-- Recovery UX weiter glätten: Quit-Modus visuell konsistent halten und Entscheidungen noch klarer machen
-- Consumable Picker weiter schärfen: schnelle Aktionen, gute Lesbarkeit in Dark/Light und weniger Reibung im Alltag
-- Details/Recovery Tab weiter ausbauen: Historie verständlicher machen und nächste sinnvolle Aktionen anbieten
-- Startup-Gefühl verbessern: weitere Screens mit lokalem Warm-Cache absichern (nach Dashboard)
-- Testabdeckung erhöhen (ViewModels + Services), damit neue Recovery/Picker Flows regressionssicher bleiben

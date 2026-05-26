@@ -38,7 +38,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
+                Section("Tracking") {
                     NavigationLink {
                         ConsumablesSettingsView(viewModel: viewModel)
                     } label: {
@@ -46,24 +46,33 @@ struct SettingsView: View {
                     }
                 }
 
-                Section {
+                Section("Account") {
                     Button {
                         isProfileSheetPresented = true
                     } label: {
                         settingsRow(icon: "person.crop.circle", title: "Profile", subtitle: viewModel.profile?.displayName)
                     }
                     .buttonStyle(.plain)
+                }
+
+                Section("Appearance") {
                     NavigationLink {
                         WallpaperSettingsView(viewModel: wallpaperViewModel)
                     } label: {
                         settingsRow(icon: "photo", title: "Wallpaper", subtitle: wallpaperViewModel.statusText)
                     }
+                }
 
+                Section("Privacy & Security") {
+                    settingsRow(icon: "faceid", title: "Face ID Lock", badge: "Coming Soon")
+                }
+
+                Section("Notifications & Data") {
                     settingsRow(icon: "bell.badge", title: "Notifications", badge: "Coming Soon")
                     settingsRow(icon: "externaldrive", title: "Data", badge: "Coming Soon")
                 }
 
-                Section {
+                Section("Session") {
                     Button(role: .destructive) {
                         onSignOut()
                     } label: {
@@ -73,6 +82,9 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(AppColors.background)
+            .safeAreaInset(edge: .bottom) {
+                Color.clear.frame(height: 120)
+            }
             .navigationTitle("Settings")
             .task {
                 await viewModel.loadConsumables()

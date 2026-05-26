@@ -280,6 +280,9 @@ struct DashboardView: View {
     private var dashboardTab: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if viewModel.isSelectedConsumableInQuitMode {
+                    header(title: "Overview")
+                }
                 dashboardContent
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1598,9 +1601,25 @@ private struct DashboardStatCard: View {
 private struct DashboardActivityPulseView: View {
     let entries: [ConsumeEntry]
     @State private var haloAnimate = false
+    private let windowHours = 8
+
+    private var cutoff: Date {
+        Date().addingTimeInterval(TimeInterval(-windowHours * 3600))
+    }
+
+    private var xDomainEnd: Date {
+        Date()
+    }
+
+    private var xAxisTickValues: [Date] {
+        let cal = Calendar.current
+        let now = Date()
+        let endOfCurrentHour = cal.dateInterval(of: .hour, for: now)?.start ?? now
+        let start = cal.date(byAdding: .hour, value: -(windowHours - 1), to: endOfCurrentHour) ?? endOfCurrentHour
+        return (0..<windowHours).compactMap { cal.date(byAdding: .hour, value: $0, to: start) }
+    }
 
     private var points: [DashboardChartPoint] {
-        let cutoff = Date().addingTimeInterval(-8 * 3600)
         return entries
             .filter { $0.timestamp >= cutoff }
             .sorted { $0.timestamp < $1.timestamp }
@@ -1651,8 +1670,9 @@ private struct DashboardActivityPulseView: View {
             .chartLegend(.hidden)
             .chartYAxis(.hidden)
             .chartYScale(domain: 0...1)
+            .chartXScale(domain: cutoff...xDomainEnd)
             .chartXAxis {
-                AxisMarks(values: .stride(by: .hour)) { value in
+                AxisMarks(values: xAxisTickValues) { value in
                     AxisGridLine().foregroundStyle(AppColors.textSecondary.opacity(0.12))
                     AxisTick().foregroundStyle(AppColors.textSecondary.opacity(0.2))
                     AxisValueLabel {
