@@ -6,6 +6,11 @@ enum WallpaperSourceType: String, Codable {
     case pexels
 }
 
+enum WallpaperReadabilityTintMode: String, Codable {
+    case dark
+    case light
+}
+
 struct WallpaperSettings: Codable, Equatable {
     var isEnabled: Bool
     var sourceType: WallpaperSourceType?
@@ -21,6 +26,11 @@ struct WallpaperSettings: Codable, Equatable {
     var photographerName: String?
     var photographerURL: URL?
     var pexelsPhotoURL: URL?
+    var readabilityTopOpacity: Double
+    var readabilityMidOpacity: Double
+    var readabilityBottomOpacity: Double
+    var readabilityTintMode: WallpaperReadabilityTintMode
+    var surfaceOpacityBoost: Double
 
     static let `default` = WallpaperSettings(
         isEnabled: false,
@@ -36,7 +46,12 @@ struct WallpaperSettings: Codable, Equatable {
         imagePixelHeight: 0,
         photographerName: nil,
         photographerURL: nil,
-        pexelsPhotoURL: nil
+        pexelsPhotoURL: nil,
+        readabilityTopOpacity: 0.12,
+        readabilityMidOpacity: 0.08,
+        readabilityBottomOpacity: 0.18,
+        readabilityTintMode: .dark,
+        surfaceOpacityBoost: 0.18
     )
 
     enum CodingKeys: String, CodingKey {
@@ -60,6 +75,11 @@ struct WallpaperSettings: Codable, Equatable {
         case photographerName
         case photographerURL
         case pexelsPhotoURL
+        case readabilityTopOpacity
+        case readabilityMidOpacity
+        case readabilityBottomOpacity
+        case readabilityTintMode
+        case surfaceOpacityBoost
     }
 
     init(
@@ -76,7 +96,12 @@ struct WallpaperSettings: Codable, Equatable {
         imagePixelHeight: Double,
         photographerName: String?,
         photographerURL: URL?,
-        pexelsPhotoURL: URL?
+        pexelsPhotoURL: URL?,
+        readabilityTopOpacity: Double,
+        readabilityMidOpacity: Double,
+        readabilityBottomOpacity: Double,
+        readabilityTintMode: WallpaperReadabilityTintMode,
+        surfaceOpacityBoost: Double
     ) {
         self.isEnabled = isEnabled
         self.sourceType = sourceType
@@ -92,6 +117,11 @@ struct WallpaperSettings: Codable, Equatable {
         self.photographerName = photographerName
         self.photographerURL = photographerURL
         self.pexelsPhotoURL = pexelsPhotoURL
+        self.readabilityTopOpacity = readabilityTopOpacity
+        self.readabilityMidOpacity = readabilityMidOpacity
+        self.readabilityBottomOpacity = readabilityBottomOpacity
+        self.readabilityTintMode = readabilityTintMode
+        self.surfaceOpacityBoost = surfaceOpacityBoost
     }
 
     init(from decoder: Decoder) throws {
@@ -115,6 +145,11 @@ struct WallpaperSettings: Codable, Equatable {
         let photographerName = try container.decodeIfPresent(String.self, forKey: .photographerName)
         let photographerURL = try container.decodeIfPresent(URL.self, forKey: .photographerURL)
         let pexelsPhotoURL = try container.decodeIfPresent(URL.self, forKey: .pexelsPhotoURL)
+        let readabilityTopOpacity = try container.decodeIfPresent(Double.self, forKey: .readabilityTopOpacity) ?? 0.12
+        let readabilityMidOpacity = try container.decodeIfPresent(Double.self, forKey: .readabilityMidOpacity) ?? 0.08
+        let readabilityBottomOpacity = try container.decodeIfPresent(Double.self, forKey: .readabilityBottomOpacity) ?? 0.18
+        let readabilityTintMode = try container.decodeIfPresent(WallpaperReadabilityTintMode.self, forKey: .readabilityTintMode) ?? .dark
+        let surfaceOpacityBoost = try container.decodeIfPresent(Double.self, forKey: .surfaceOpacityBoost) ?? 0.18
 
         self.init(
             isEnabled: isEnabled,
@@ -130,7 +165,12 @@ struct WallpaperSettings: Codable, Equatable {
             imagePixelHeight: imagePixelHeight,
             photographerName: photographerName,
             photographerURL: photographerURL,
-            pexelsPhotoURL: pexelsPhotoURL
+            pexelsPhotoURL: pexelsPhotoURL,
+            readabilityTopOpacity: readabilityTopOpacity,
+            readabilityMidOpacity: readabilityMidOpacity,
+            readabilityBottomOpacity: readabilityBottomOpacity,
+            readabilityTintMode: readabilityTintMode,
+            surfaceOpacityBoost: surfaceOpacityBoost
         )
     }
 
@@ -150,6 +190,11 @@ struct WallpaperSettings: Codable, Equatable {
         try container.encodeIfPresent(photographerName, forKey: .photographerName)
         try container.encodeIfPresent(photographerURL, forKey: .photographerURL)
         try container.encodeIfPresent(pexelsPhotoURL, forKey: .pexelsPhotoURL)
+        try container.encode(readabilityTopOpacity, forKey: .readabilityTopOpacity)
+        try container.encode(readabilityMidOpacity, forKey: .readabilityMidOpacity)
+        try container.encode(readabilityBottomOpacity, forKey: .readabilityBottomOpacity)
+        try container.encode(readabilityTintMode, forKey: .readabilityTintMode)
+        try container.encode(surfaceOpacityBoost, forKey: .surfaceOpacityBoost)
     }
 
     var clamped: WallpaperSettings {
@@ -160,6 +205,10 @@ struct WallpaperSettings: Codable, Equatable {
         copy.panYNorm = min(max(copy.panYNorm, -1), 1)
         copy.imagePixelWidth = max(copy.imagePixelWidth, 0)
         copy.imagePixelHeight = max(copy.imagePixelHeight, 0)
+        copy.readabilityTopOpacity = min(max(copy.readabilityTopOpacity, 0), 0.5)
+        copy.readabilityMidOpacity = min(max(copy.readabilityMidOpacity, 0), 0.5)
+        copy.readabilityBottomOpacity = min(max(copy.readabilityBottomOpacity, 0), 0.7)
+        copy.surfaceOpacityBoost = min(max(copy.surfaceOpacityBoost, 0), 0.6)
         return copy
     }
 }

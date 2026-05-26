@@ -16,6 +16,7 @@ final class WallpaperViewModel: ObservableObject {
     private let store: WallpaperStateStoreProtocol
     private let searchService: WallpaperSearchServiceProtocol
     private let imageLoader: WallpaperImageLoaderProtocol
+    private let readabilityAnalyzer: WallpaperReadabilityAnalyzerProtocol
 
     private var curatedPage = 1
     private var searchPage = 1
@@ -26,11 +27,13 @@ final class WallpaperViewModel: ObservableObject {
     init(
         store: WallpaperStateStoreProtocol,
         searchService: WallpaperSearchServiceProtocol,
-        imageLoader: WallpaperImageLoaderProtocol
+        imageLoader: WallpaperImageLoaderProtocol,
+        readabilityAnalyzer: WallpaperReadabilityAnalyzerProtocol
     ) {
         self.store = store
         self.searchService = searchService
         self.imageLoader = imageLoader
+        self.readabilityAnalyzer = readabilityAnalyzer
         self.settings = store.load()
         repairPersistedWallpaperIfNeeded()
     }
@@ -39,7 +42,8 @@ final class WallpaperViewModel: ObservableObject {
         self.init(
             store: WallpaperUserDefaultsStore(),
             searchService: PexelsWallpaperSearchService(),
-            imageLoader: WallpaperImageLoader()
+            imageLoader: WallpaperImageLoader(),
+            readabilityAnalyzer: WallpaperReadabilityAnalyzer()
         )
     }
 
@@ -63,6 +67,10 @@ final class WallpaperViewModel: ObservableObject {
             return "Enabled"
         }
         return "Off"
+    }
+
+    var needsReadabilityWarning: Bool {
+        settings.surfaceOpacityBoost >= 0.28
     }
 
     func clearError() {
@@ -108,6 +116,16 @@ final class WallpaperViewModel: ObservableObject {
             searchItems = []
             searchPage = 1
             canLoadMoreSearch = true
+            errorMessage = nil
+            return
+        }
+
+        // Avoid noisy validation alerts while user is still typing.
+        if trimmed.count < 3 {
+            searchItems = []
+            searchPage = 1
+            canLoadMoreSearch = true
+            errorMessage = nil
             return
         }
 
@@ -121,6 +139,7 @@ final class WallpaperViewModel: ObservableObject {
     func search(reset: Bool) async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        guard trimmed.count >= 3 else { return }
         if isSearching || (!canLoadMoreSearch && !reset) { return }
 
         if reset {
@@ -240,6 +259,20 @@ final class WallpaperViewModel: ObservableObject {
             newSettings.photographerName = mutable.photographerName
             newSettings.photographerURL = mutable.photographerURL
             newSettings.pexelsPhotoURL = mutable.pexelsPhotoURL
+            if let local = mutable.cachedLocalPath, let profile = readabilityAnalyzer.analyze(localFilePath: local) {
+                newSettings.readabilityTopOpacity = profile.topScrimOpacity
+                newSettings.readabilityMidOpacity = profile.midScrimOpacity
+                newSettings.readabilityBottomOpacity = profile.bottomScrimOpacity
+                newSettings.readabilityTintMode = profile.globalTint
+                newSettings.surfaceOpacityBoost = profile.surfaceBoost
+            } else {
+                let fallback = WallpaperReadabilityProfile.fallback
+                newSettings.readabilityTopOpacity = fallback.topScrimOpacity
+                newSettings.readabilityMidOpacity = fallback.midScrimOpacity
+                newSettings.readabilityBottomOpacity = fallback.bottomScrimOpacity
+                newSettings.readabilityTintMode = fallback.globalTint
+                newSettings.surfaceOpacityBoost = fallback.surfaceBoost
+            }
 
             settings = newSettings.clamped
             persist()

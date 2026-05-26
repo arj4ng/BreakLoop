@@ -70,6 +70,7 @@ struct DashboardView: View {
     @StateObject private var settingsViewModel: SettingsViewModel
     @ObservedObject var wallpaperViewModel: WallpaperViewModel
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     let onSignOut: () -> Void
 
     init(userId: String, scope: FirestoreAccountScope, wallpaperViewModel: WallpaperViewModel, onSignOut: @escaping () -> Void) {
@@ -305,12 +306,18 @@ struct DashboardView: View {
 
     private var bottomControls: some View {
         let usesWallpaperBackground = wallpaperViewModel.settings.isEnabled
+        let adaptiveStyle = WallpaperAdaptiveStyle.resolve(
+            settings: wallpaperViewModel.settings,
+            colorScheme: colorScheme,
+            colorSchemeContrast: colorSchemeContrast
+        )
         let fadeColors: [Color]
 
         if usesWallpaperBackground {
+            let tint = wallpaperViewModel.settings.readabilityTintMode == .light ? Color.white : Color.black
             fadeColors = colorScheme == .light
-                ? [Color.white.opacity(0), Color.white.opacity(0.34), Color.white.opacity(0.56)]
-                : [Color.black.opacity(0), Color.black.opacity(0.42), Color.black.opacity(0.62)]
+                ? [tint.opacity(0), tint.opacity(wallpaperViewModel.settings.readabilityMidOpacity), tint.opacity(wallpaperViewModel.settings.readabilityBottomOpacity)]
+                : [tint.opacity(0), tint.opacity(wallpaperViewModel.settings.readabilityMidOpacity), tint.opacity(wallpaperViewModel.settings.readabilityBottomOpacity)]
         } else {
             fadeColors = colorScheme == .light
                 ? [Color(.systemBackground).opacity(0), Color(.systemBackground).opacity(0.84), Color(.systemBackground)]
@@ -341,7 +348,7 @@ struct DashboardView: View {
                     .frame(height: 78)
             }
 
-            dashboardTabBar
+            dashboardTabBar(style: adaptiveStyle)
         }
         .background(
             LinearGradient(
@@ -352,7 +359,7 @@ struct DashboardView: View {
         )
     }
 
-    private var dashboardTabBar: some View {
+    private func dashboardTabBar(style: WallpaperAdaptiveStyle) -> some View {
         HStack(spacing: 8) {
             ForEach(DashboardTab.allCases) { tab in
                 let isSelected = selectedTab == tab
@@ -369,13 +376,13 @@ struct DashboardView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
-                    .foregroundStyle(isSelected ? AppColors.textOnAccent : AppColors.textSecondary)
+                    .foregroundStyle(isSelected ? AppColors.textOnAccent : style.wallpaperTabUnselected)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
                     .padding(.horizontal, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(isSelected ? AppColors.buttonPrimaryBackground : Color.clear)
+                            .fill(isSelected ? AppColors.buttonPrimaryBackground : style.inactiveTabCapsuleFill)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -393,11 +400,11 @@ struct DashboardView: View {
         .padding(.trailing, 8)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(style.wallpaperGlassFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppColors.border.opacity(0.18), lineWidth: 1)
+                .stroke(style.wallpaperGlassBorder, lineWidth: 1)
         )
     }
 
@@ -416,10 +423,15 @@ struct DashboardView: View {
     }
 
     private func header(title: String) -> some View {
-        HStack {
+        let adaptiveStyle = WallpaperAdaptiveStyle.resolve(
+            settings: wallpaperViewModel.settings,
+            colorScheme: colorScheme,
+            colorSchemeContrast: colorSchemeContrast
+        )
+        return HStack {
             Text(title)
                 .appTypography(AppTypography.title1)
-                .foregroundStyle(AppColors.textPrimary)
+                .foregroundStyle(adaptiveStyle.wallpaperPrimaryText)
         }
     }
 
@@ -956,6 +968,11 @@ struct DashboardView: View {
     }
 
     private var quitRecoveryContent: some View {
+        let adaptiveStyle = WallpaperAdaptiveStyle.resolve(
+            settings: wallpaperViewModel.settings,
+            colorScheme: colorScheme,
+            colorSchemeContrast: colorSchemeContrast
+        )
         let stages = viewModel.selectedRecoveryTemplate?.stages ?? []
         let daysQuit = viewModel.selectedQuitMetrics.daysQuit
         let achievedCount = stages.filter { daysQuit >= $0.days }.count
@@ -973,12 +990,12 @@ struct DashboardView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text("\(achievedCount) of \(stages.count) milestones achieved")
                 .font(.title3)
-                .foregroundStyle(AppColors.textSecondary)
+                .foregroundStyle(adaptiveStyle.wallpaperSecondaryText)
 
             if showsGenericTimelineInfo {
                 Text("Generic timeline: based on common behavior-change phases, not substance-specific recovery.")
                     .font(.footnote)
-                    .foregroundStyle(AppColors.textSecondary)
+                    .foregroundStyle(adaptiveStyle.wallpaperMutedText)
             }
 
             VStack(spacing: 16) {
@@ -1017,18 +1034,13 @@ struct DashboardView: View {
                             )
                         }
                     }
-                    .overlay(alignment: .top) {
-                        if visibleAchievedStages.count > 1 {
-                            quitPlanFadedTop
-                        }
-                    }
                 }
 
                 if isCollapsible && !upcomingStages.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Upcoming")
                             .font(.headline)
-                            .foregroundStyle(AppColors.textPrimary)
+                            .foregroundStyle(adaptiveStyle.wallpaperPrimaryText)
 
                         VStack(spacing: 20) {
                             ForEach(Array(upcomingStages.enumerated()), id: \.element.id) { index, stage in
@@ -1043,25 +1055,13 @@ struct DashboardView: View {
                 }
             }
             .padding(20)
-            .background(AppColors.surfaceElevated)
+            .background(adaptiveStyle.wallpaperGlassFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(adaptiveStyle.wallpaperGlassBorder, lineWidth: 1)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-    }
-
-    private var quitPlanFadedTop: some View {
-        LinearGradient(
-            colors: [
-                AppColors.surfaceElevated,
-                AppColors.surfaceElevated.opacity(0.88),
-                AppColors.surfaceElevated.opacity(0.62),
-                AppColors.surfaceElevated.opacity(0.28),
-                AppColors.surfaceElevated.opacity(0)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: 53)
-        .allowsHitTesting(false)
     }
 
     private var detailsSummary: some View {

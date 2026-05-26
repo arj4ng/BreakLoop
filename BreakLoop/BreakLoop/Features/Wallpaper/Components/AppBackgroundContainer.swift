@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppBackgroundContainer<Content: View>: View {
     @ObservedObject var wallpaperViewModel: WallpaperViewModel
+    @Environment(\.colorScheme) private var colorScheme
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -15,17 +16,43 @@ struct AppBackgroundContainer<Content: View>: View {
 
             // Layer 3: foreground content keeps natural safe-area behavior
             content
+                .overlay {
+                    if wallpaperViewModel.settings.isEnabled {
+                        readabilityTint
+                            .opacity(wallpaperViewModel.settings.surfaceOpacityBoost * 0.26)
+                            .ignoresSafeArea()
+                            .allowsHitTesting(false)
+                    }
+                }
 
             // Layer 4: legibility gradient full-bleed
             LinearGradient(
                 colors: [
-                    Color.black.opacity(0.08),
-                    Color.black.opacity(0.04),
+                    Color.clear,
+                    readabilityTint.opacity(wallpaperViewModel.settings.readabilityMidOpacity),
+                    readabilityTint.opacity(wallpaperViewModel.settings.readabilityBottomOpacity),
                     Color.clear
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+
+            // Layer 5: dedicated status-bar readability scrim (always dark, subtle)
+            VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [
+                        Color.black.opacity(statusBarScrimOpacity),
+                        Color.black.opacity(statusBarScrimOpacity * 0.45),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 120)
+                Spacer(minLength: 0)
+            }
             .ignoresSafeArea()
             .allowsHitTesting(false)
         }
@@ -64,7 +91,7 @@ struct AppBackgroundContainer<Content: View>: View {
                             .scaleEffect(CGFloat(settings.zoomScale))
                             .offset(x: transform.offsetX, y: transform.offsetY)
                             .blur(radius: settings.blurRadius)
-                            .overlay(Color.black.opacity(0.16))
+                            .overlay(readabilityTint.opacity(wallpaperTintOpacity))
 
                     default:
                         AppColors.background
@@ -87,5 +114,23 @@ struct AppBackgroundContainer<Content: View>: View {
             }
         }
         return settings.sourceURL
+    }
+
+    private var readabilityTint: Color {
+        if wallpaperViewModel.settings.readabilityTintMode == .light {
+            return .white
+        }
+        return .black
+    }
+
+    private var wallpaperTintOpacity: Double {
+        max(wallpaperViewModel.settings.readabilityMidOpacity, colorScheme == .dark ? 0.12 : 0.08)
+    }
+
+    private var statusBarScrimOpacity: Double {
+        if !wallpaperViewModel.settings.isEnabled {
+            return 0
+        }
+        return colorScheme == .dark ? 0.24 : 0.18
     }
 }
