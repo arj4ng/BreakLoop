@@ -16,7 +16,7 @@
 
   <p>
     <img alt="Plattform" src="https://img.shields.io/badge/Plattform-iOS-0A84FF?style=for-the-badge" />
-    <img alt="Architektur" src="https://img.shields.io/badge/Architektur-MVVM%20%2B%20Service%20Layer-34C759?style=for-the-badge" />
+    <img alt="Architektur" src="https://img.shields.io/badge/Architektur-Layered%20(MVVM%20%2B%20Service)-34C759?style=for-the-badge" />
     <img alt="Status" src="https://img.shields.io/badge/Status-Abgeschlossen-34C759?style=for-the-badge" />
   </p>
 </div>
@@ -61,21 +61,17 @@ Genau da setzt BreakLoop an.
 - iOS + SwiftUI
 - MVVM + Service Layer
 - Firebase (Auth, Firestore, Messaging)
-- Feature first Struktur
+- Layered Struktur (`UI`, `Business`, `Storage`, `Platform`)
 
 ```text
 BreakLoop/
 ├── BreakLoop/
-│   ├── App/
-│   ├── Core/
-│   ├── Shared/
-│   ├── Features/
-│   │   ├── Dashboard/
-│   │   ├── Expenses/
-│   │   ├── ConsumptionPlan/
-│   │   ├── Rewards/
-│   │   └── Settings/
-│   └── Resources/
+│   ├── UI/             # Screens, Views, ViewModels
+│   ├── Business/       # Domain Models + Business Services
+│   ├── Storage/        # Firebase Repositories + Infra Services
+│   ├── Platform/       # Design System + Utilities + Platform Config
+│   ├── Assets.xcassets/
+│   └── BreakLoopApp.swift
 └── BreakLoopTests/
 ```
 
@@ -90,7 +86,7 @@ BreakLoop/
   <tr>
     <td>Projektstruktur</td>
     <td>✅ Fertig</td>
-    <td>Feature first Struktur steht</td>
+    <td>Layered Struktur mit klarer Trennung von UI, Business, Storage und Platform steht</td>
   </tr>
   <tr>
     <td>Design System</td>
