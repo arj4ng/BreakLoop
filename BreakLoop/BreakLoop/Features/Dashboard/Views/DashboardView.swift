@@ -305,6 +305,17 @@ struct DashboardView: View {
 
     private var bottomControls: some View {
         let usesWallpaperBackground = wallpaperViewModel.settings.isEnabled
+        let fadeColors: [Color]
+
+        if usesWallpaperBackground {
+            fadeColors = colorScheme == .light
+                ? [Color.white.opacity(0), Color.white.opacity(0.34), Color.white.opacity(0.56)]
+                : [Color.black.opacity(0), Color.black.opacity(0.42), Color.black.opacity(0.62)]
+        } else {
+            fadeColors = colorScheme == .light
+                ? [Color(.systemBackground).opacity(0), Color(.systemBackground).opacity(0.84), Color(.systemBackground)]
+                : [AppColors.background.opacity(0), AppColors.background.opacity(0.88), AppColors.background]
+        }
 
         return VStack(spacing: 0) {
             if !viewModel.isSelectedConsumableInQuitMode {
@@ -325,15 +336,16 @@ struct DashboardView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 8)
+            } else {
+                Color.clear
+                    .frame(height: 78)
             }
 
             dashboardTabBar
         }
         .background(
             LinearGradient(
-                colors: usesWallpaperBackground
-                    ? [Color.black.opacity(0), Color.black.opacity(0.24), Color.black.opacity(0.4)]
-                    : [AppColors.background.opacity(0), AppColors.background.opacity(0.88), AppColors.background],
+                colors: fadeColors,
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -374,10 +386,19 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
+        .frame(maxWidth: 350)
         .padding(.top, 8)
         .padding(.bottom, 8)
+        .padding(.leading, 8)
+        .padding(.trailing, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppColors.border.opacity(0.18), lineWidth: 1)
+        )
     }
 
     private func tabTitle(for tab: DashboardTab) -> String {
@@ -408,13 +429,6 @@ struct DashboardView: View {
             consumablePicker
 
             if viewModel.isSelectedConsumableInQuitMode {
-                if let plan = viewModel.selectedActiveQuitPlan {
-                    continuityCard(
-                        icon: "pause.circle.fill",
-                        title: "Reduce paused",
-                        subtitle: "Baseline carried: \(formatAmount(plan.baselineDailyConsume ?? 0))/day"
-                    )
-                }
                 quitDashboardContent
             } else {
                 if let closedPlan = viewModel.selectedMostRecentClosedQuitPlan {

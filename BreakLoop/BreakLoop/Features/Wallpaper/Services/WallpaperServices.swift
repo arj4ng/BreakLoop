@@ -224,7 +224,7 @@ final class WallpaperImageLoader: WallpaperImageLoaderProtocol {
 
     func cacheImage(fromData data: Data, sourceId: String, maxPixelSize: CGFloat) throws -> CachedWallpaperImage {
         let fm = FileManager.default
-        guard let base = fm.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+        guard let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             throw WallpaperServiceError.invalidRequest
         }
 

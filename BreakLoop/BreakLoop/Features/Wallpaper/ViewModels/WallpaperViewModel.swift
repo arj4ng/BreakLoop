@@ -32,6 +32,7 @@ final class WallpaperViewModel: ObservableObject {
         self.searchService = searchService
         self.imageLoader = imageLoader
         self.settings = store.load()
+        repairPersistedWallpaperIfNeeded()
     }
 
     convenience init() {
@@ -47,7 +48,11 @@ final class WallpaperViewModel: ObservableObject {
     }
 
     var hasWallpaper: Bool {
-        settings.isEnabled && settings.cachedLocalPath != nil
+        guard settings.isEnabled else { return false }
+        if let path = settings.cachedLocalPath {
+            return FileManager.default.fileExists(atPath: path)
+        }
+        return settings.sourceURL != nil
     }
 
     var statusText: String {
@@ -246,5 +251,31 @@ final class WallpaperViewModel: ObservableObject {
     private func persist() {
         settings = settings.clamped
         store.save(settings)
+    }
+
+    private func repairPersistedWallpaperIfNeeded() {
+        guard settings.isEnabled else { return }
+        guard let cachedPath = settings.cachedLocalPath else { return }
+        guard !FileManager.default.fileExists(atPath: cachedPath) else { return }
+        guard let sourceURL = settings.sourceURL else { return }
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let cached = try await self.imageLoader.cacheImage(
+                    fromRemoteURL: sourceURL,
+                    sourceId: self.settings.sourceId ?? UUID().uuidString,
+                    maxPixelSize: 2200
+                )
+                self.settings.cachedLocalPath = cached.localPath
+                if self.settings.imagePixelWidth <= 0 || self.settings.imagePixelHeight <= 0 {
+                    self.settings.imagePixelWidth = cached.pixelWidth
+                    self.settings.imagePixelHeight = cached.pixelHeight
+                }
+                self.persist()
+            } catch {
+                // keep old setting; UI can still fallback to remote URL when available
+            }
+        }
     }
 }

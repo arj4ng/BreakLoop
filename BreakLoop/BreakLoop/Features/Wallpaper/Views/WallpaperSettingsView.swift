@@ -154,7 +154,9 @@ struct WallpaperSettingsView: View {
     private var previewCard: some View {
         let displayURL: URL? = {
             if let path = viewModel.settings.cachedLocalPath {
-                return URL(filePath: path)
+                if FileManager.default.fileExists(atPath: path) {
+                    return URL(filePath: path)
+                }
             }
             return viewModel.settings.sourceURL
         }()
