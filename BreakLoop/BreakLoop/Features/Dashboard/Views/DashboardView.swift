@@ -68,17 +68,21 @@ struct DashboardView: View {
     @State private var pendingStartQuitItem: ConsumableItem?
     @State private var pendingStartQuitDate: Date = .now
     @StateObject private var settingsViewModel: SettingsViewModel
+    @ObservedObject var wallpaperViewModel: WallpaperViewModel
     @Environment(\.colorScheme) private var colorScheme
     let onSignOut: () -> Void
 
-    init(userId: String, scope: FirestoreAccountScope, onSignOut: @escaping () -> Void) {
+    init(userId: String, scope: FirestoreAccountScope, wallpaperViewModel: WallpaperViewModel, onSignOut: @escaping () -> Void) {
         _viewModel = StateObject(wrappedValue: DashboardViewModel(userId: userId, scope: scope))
         _settingsViewModel = StateObject(wrappedValue: SettingsViewModel(userId: userId, scope: scope))
+        self.wallpaperViewModel = wallpaperViewModel
         self.onSignOut = onSignOut
     }
 
     var body: some View {
-        selectedTabContent
+        AppBackgroundContainer(wallpaperViewModel: wallpaperViewModel) {
+            selectedTabContent
+        }
         .tint(AppColors.accent)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             bottomControls
@@ -282,7 +286,6 @@ struct DashboardView: View {
             .padding(.top, 18)
             .padding(.bottom, 148)
         }
-        .background(AppColors.background)
     }
 
     private var detailsTab: some View {
@@ -294,14 +297,15 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(24)
         }
-        .background(AppColors.background)
     }
 
     private var settingsTab: some View {
-        SettingsView(userId: viewModel.userId, scope: viewModel.scope, onSignOut: onSignOut)
+        SettingsView(userId: viewModel.userId, scope: viewModel.scope, wallpaperViewModel: wallpaperViewModel, onSignOut: onSignOut)
     }
 
     private var bottomControls: some View {
+        let usesWallpaperBackground = wallpaperViewModel.settings.isEnabled
+
         return VStack(spacing: 0) {
             if !viewModel.isSelectedConsumableInQuitMode {
                 EntryActionDock(
@@ -327,7 +331,9 @@ struct DashboardView: View {
         }
         .background(
             LinearGradient(
-                colors: [AppColors.background.opacity(0), AppColors.background.opacity(0.88), AppColors.background],
+                colors: usesWallpaperBackground
+                    ? [Color.black.opacity(0), Color.black.opacity(0.24), Color.black.opacity(0.4)]
+                    : [AppColors.background.opacity(0), AppColors.background.opacity(0.88), AppColors.background],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -1995,5 +2001,5 @@ private struct PurchaseEntrySheet: View {
     }
 }
 #Preview {
-    DashboardView(userId: "preview", scope: .registered, onSignOut: {})
+    DashboardView(userId: "preview", scope: .registered, wallpaperViewModel: WallpaperViewModel(), onSignOut: {})
 }

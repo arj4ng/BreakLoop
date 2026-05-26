@@ -42,6 +42,7 @@ struct RootView: View {
 
     // sign in wird aus onboarding als modal geöffnet
     @State private var showsOnboardingAuthSheet: Bool = false
+    @StateObject private var wallpaperViewModel = WallpaperViewModel()
 
     // auth service prüft session und guest fallback
     private let authService: AuthServiceProtocol = FirebaseAuthService()
@@ -84,6 +85,7 @@ struct RootView: View {
                     DashboardView(
                         userId: session.userId,
                         scope: session.isAnonymous ? .guest : .registered,
+                        wallpaperViewModel: wallpaperViewModel,
                         onSignOut: {
                             handleSignOut()
                         }

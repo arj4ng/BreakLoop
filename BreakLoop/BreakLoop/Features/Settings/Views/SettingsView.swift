@@ -23,13 +23,15 @@ import Combine
 
 struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
+    @ObservedObject var wallpaperViewModel: WallpaperViewModel
     @State private var isProfileSheetPresented = false
     @State private var isRegisterSheetPresented = false
     private let authService: AuthServiceProtocol = FirebaseAuthService()
     let onSignOut: () -> Void
 
-    init(userId: String, scope: FirestoreAccountScope, onSignOut: @escaping () -> Void = {}) {
+    init(userId: String, scope: FirestoreAccountScope, wallpaperViewModel: WallpaperViewModel, onSignOut: @escaping () -> Void = {}) {
         _viewModel = StateObject(wrappedValue: SettingsViewModel(userId: userId, scope: scope))
+        self.wallpaperViewModel = wallpaperViewModel
         self.onSignOut = onSignOut
     }
 
@@ -51,6 +53,12 @@ struct SettingsView: View {
                         settingsRow(icon: "person.crop.circle", title: "Profile", subtitle: viewModel.profile?.displayName)
                     }
                     .buttonStyle(.plain)
+                    NavigationLink {
+                        WallpaperSettingsView(viewModel: wallpaperViewModel)
+                    } label: {
+                        settingsRow(icon: "photo", title: "Wallpaper", subtitle: wallpaperViewModel.statusText)
+                    }
+
                     settingsRow(icon: "bell.badge", title: "Notifications", badge: "Coming Soon")
                     settingsRow(icon: "externaldrive", title: "Data", badge: "Coming Soon")
                 }
@@ -837,5 +845,5 @@ final class ConsumableFormState: ObservableObject {
 }
 
 #Preview {
-    SettingsView(userId: "preview", scope: .registered)
+    SettingsView(userId: "preview", scope: .registered, wallpaperViewModel: WallpaperViewModel())
 }

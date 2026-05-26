@@ -11,3 +11,8 @@ docs/*
 !docs/assets/
 docs/assets/*
 !docs/assets/breakloop-readme-icon-256.png
+
+# local secrets
+.env
+*.local
+BreakLoop/BreakLoop/Config/Secrets.plist
