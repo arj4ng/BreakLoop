@@ -180,8 +180,8 @@ struct RootView: View {
             appState.route = .app
         } catch {
 
-            // bei fehler sicher auf auth fallback gehen
-            appState.route = .auth
+            // bei bootstrap fehler zurück ins onboarding statt signin-only screen
+            appState.route = .onboarding
             appState.authOpenedFromOnboarding = false
         }
     }
