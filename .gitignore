@@ -16,3 +16,4 @@ docs/assets/*
 .env
 *.local
 **/Secrets.plist
+BreakLoop/BreakLoop/GoogleService-Info.plist
