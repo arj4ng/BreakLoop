@@ -196,10 +196,16 @@ BreakLoop/
 </table>
 
 
-## Local Secrets Setup
+## Lokales Secret Setup (wichtig)
 
-1. Copy `BreakLoop/Config/Secrets.xcconfig.example` -> `BreakLoop/Config/Secrets.xcconfig`.
-2. Set `PEXELS_API_KEY` locally.
-3. Keep `BreakLoop/BreakLoop/GoogleService-Info.plist` local only (already gitignored).
-4. Run `git config core.hooksPath .githooks` once to enable commit secret guard.
+Damit keine API Keys aus Versehen auf GitHub landen, sind Secrets absichtlich nur lokal.
 
+1. Datei kopieren: `BreakLoop/Config/Secrets.xcconfig.example` → `BreakLoop/Config/Secrets.xcconfig`
+2. In `Secrets.xcconfig` deinen lokalen Pexels Key eintragen:
+   `PEXELS_API_KEY=DEIN_KEY`
+3. `BreakLoop/BreakLoop/GoogleService-Info.plist` nur lokal behalten
+   (Datei ist bereits in `.gitignore`)
+4. Einmalig Secret-Schutz für Commits aktivieren:
+   `git config core.hooksPath .githooks`
+
+Kurz gesagt: Keys lokal ja, im Repo nein.
