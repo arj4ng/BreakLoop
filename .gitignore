@@ -19,3 +19,4 @@ docs/assets/*
 BreakLoop/BreakLoop/GoogleService-Info.plist
 BreakLoop/Config/Secrets.xcconfig
 .gitleaks.toml
+backups/
