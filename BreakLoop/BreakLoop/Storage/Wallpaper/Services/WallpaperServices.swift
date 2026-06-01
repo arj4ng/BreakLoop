@@ -169,6 +169,10 @@ final class PexelsWallpaperSearchService: WallpaperSearchServiceProtocol {
         session: URLSession = .shared,
         guardPolicy: WallpaperSecurityGuard = WallpaperSecurityGuard(),
         apiKeyProvider: @escaping () -> String? = {
+            if let fromInfo = Bundle.main.object(forInfoDictionaryKey: "PEXELS_API_KEY") as? String,
+               !fromInfo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return fromInfo
+            }
             if let env = ProcessInfo.processInfo.environment["PEXELS_API_KEY"], !env.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 return env
             }

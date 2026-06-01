@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+files=$(git diff --cached --name-only | rg -v '\.example$|README\.md$' || true)
+[ -z "$files" ] && exit 0
+
+if git diff --cached -U0 -- $files | rg -n "AIza[0-9A-Za-z_-]{20,}|PEXELS_API_KEY\s*=\s*(?!YOUR_)[A-Za-z0-9_-]{8,}|GOOGLE_API_KEY\s*=\s*[A-Za-z0-9_-]{8,}" -S -P >/dev/null; then
+  echo "Secret pattern detected in staged changes. Commit blocked."
+  exit 1
+fi

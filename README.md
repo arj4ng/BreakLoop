@@ -194,3 +194,12 @@ BreakLoop/
     <td>Wallpaper Flow inkl. Pexels API Integration, Suche, Editor, Blur und globaler Anwendung abgeschlossen</td>
   </tr>
 </table>
+
+
+## Local Secrets Setup
+
+1. Copy `BreakLoop/Config/Secrets.xcconfig.example` -> `BreakLoop/Config/Secrets.xcconfig`.
+2. Set `PEXELS_API_KEY` locally.
+3. Keep `BreakLoop/BreakLoop/GoogleService-Info.plist` local only (already gitignored).
+4. Run `git config core.hooksPath .githooks` once to enable commit secret guard.
+

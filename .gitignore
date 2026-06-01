@@ -17,3 +17,5 @@ docs/assets/*
 *.local
 **/Secrets.plist
 BreakLoop/BreakLoop/GoogleService-Info.plist
+BreakLoop/Config/Secrets.xcconfig
+.gitleaks.toml
